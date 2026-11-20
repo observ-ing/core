@@ -14,6 +14,7 @@ routes nav
     observation "/observation/:did/:rkey"
       photo "/observation/:did/:rkey/photo/:index"
       identify "/observation/:did/:rkey/identify"
+      edit "/observation/:did/:rkey/edit"
     profile "/profile/:did"
     taxon "/taxon/:kingdom/:name"
     search "/search"
@@ -91,6 +92,10 @@ shape Detail
   longitude: number
   hasLocation: bool
   uncertainty: string
+  uncertaintyMeters: number
+  // The event date as the edit form starts from it, in this device's zone.
+  day: string
+  time: string
   eventRemarks: string
   taxonKingdom: string
   taxonName: string
@@ -321,6 +326,8 @@ component App
   state newTaxonLabel = ""
   state newNotes = ""
   state newLicense = ""
+  // Editing your own observation reuses the new one's form; these are the photos it keeps, by index.
+  state editKept: number[] = []
   // Batch upload: the picked photos and each one's chosen species; a place for those without GPS.
   state batchPhotos: string[] = []
   state batchTaxa: string[] = []
@@ -342,8 +349,8 @@ component App
   state livePath = ""
 
   // Each kind of screen reads the topmost entry of its kind; a covered one reads again when it is back on top.
-  derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify").at(-1) { case some(x) => x.params.did, case none => "" }
-  derive obsRkey = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify").at(-1) { case some(x) => x.params.rkey, case none => "" }
+  derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify" or x.name == "edit").at(-1) { case some(x) => x.params.did, case none => "" }
+  derive obsRkey = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify" or x.name == "edit").at(-1) { case some(x) => x.params.rkey, case none => "" }
   derive profileDid = match stack(nav).filter(x => x.name == "profile").at(-1) { case some(x) => x.params.did, case none => "" }
   derive taxonKingdom = match stack(nav).filter(x => x.name == "taxon").at(-1) { case some(x) => x.params.kingdom, case none => "" }
   derive taxonName = match stack(nav).filter(x => x.name == "taxon").at(-1) { case some(x) => x.params.name, case none => "" }
@@ -374,6 +381,7 @@ component App
   resource newFound = searchTaxa(newTaxonQuery) as shape TaxonRow[] else empty()
   mutation located as shape GeolocationPosition then arrivedHere
   mutation created as shape Created refreshes feed, home then afterCreate
+  mutation updated as shape Reply refreshes detail, feed, home, person, taxonPage then afterUpdate
   resource inat = loadInat(account.did) as shape InatState else empty()
   resource downloads = loadDownloads() as shape Downloads else empty()
   resource personIds = loadProfileIds(profileTab == "identifications" ? profileDid : "", profileIdPages) as shape ProfileIds else empty()
@@ -440,6 +448,9 @@ component App
   derive locateError = pending(located) ? "" : match failure(located) { case some(f) => "Your location isn’t available. Place the pin on a map instead.", case none => "" }
   derive createError = match created { case some(r) => r.error, case none => "" }
   derive canSave = newHasPlace and not pending(created) and not pending(newFacts)
+  derive canUpdate = newHasPlace and not pending(updated) and not pending(newFacts)
+  derive updateError = match updated { case some(r) => r.error, case none => "" }
+  derive keptPhotos = detail.photos.filter(p => editKept.includes(p.index))
   derive newCrosspost = inat.linked and (newCrosspostTouched ? newCrosspostOn : inat.crosspost)
   derive batchCrosspost = inat.linked and (batchCrosspostTouched ? batchCrosspostOn : inat.crosspost)
   derive inatError = pending(inatLinked) ? "" : match inatLinked { case some(r) => r.error, case none => "" }
@@ -808,6 +819,37 @@ component App
   action saveNew
     if canSave
       send created = createObservation(newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newLatShown, newLngShown, newUncertaintyShown, newNotes, newLicenseShown, newCrosspost)
+  // Your own observation's form, filled in with what it says now.
+  action openEdit
+    newPhotos = []
+    newDate = detail.day
+    newTime = detail.time
+    newPlaced = detail.hasLocation
+    newLat = detail.latitude
+    newLng = detail.longitude
+    newUncertainty = detail.uncertaintyMeters
+    newTaxonQuery = ""
+    newTaxonName = detail.obs.scientificName
+    newTaxonRank = detail.obs.rank
+    newTaxonKingdom = detail.obs.kingdom
+    newTaxonLabel = detail.obs.commonName != "" ? `${detail.obs.commonName} · ${detail.obs.scientificName}` : detail.obs.scientificName
+    newNotes = detail.obs.remarks
+    newLicense = ""
+    editKept = detail.photos.map(p => p.index)
+    nav = push(nav, path("edit", detail.did, detail.rkey))
+  action dropKept(index: number)
+    editKept = editKept.filter(i => i != index)
+  action saveEdit
+    if canUpdate
+      send updated = updateObservation(detail.uri, editKept, newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newLatShown, newLngShown, newUncertaintyShown, newNotes, newLicenseShown)
+  action afterUpdate
+    match updated
+      case some(r)
+        if r.ok and top(nav).name == "edit"
+          nav = back(nav)
+          newPhotos = []
+      case none
+        newPhotos = newPhotos
   // Saved: close the sheet and open the new observation.
   action afterCreate
     match created
@@ -916,7 +958,7 @@ component App
                       text titleOf(detail.obs) role="heading" aria-level=2 testId="detail-title"
                     ObservationDetail(d=detail, now=now, offset=offset, scrollId=`detail-${e.id}`, openExternal=openExternal,
                       signedIn=account.signedIn, toggleLike=toggleLike, likeBusy=pending(liked), likeError=likeError,
-                      openIdentify=openIdentify, withdrawError=withdrawError, removeError=removeError,
+                      openIdentify=openIdentify, withdrawError=withdrawError, removeError=removeError, edit=openEdit,
                       commentDraft=commentDraft, editComment=editComment, postComment=postComment, commentBusy=pending(commented), commentError=commentError,
                       inatLinked=inat.linked, crosspost=crosspostShown, postToInat=postToInat, crosspostBusy=pending(crossposted), crosspostError=crosspostError)
                   else
@@ -1142,22 +1184,35 @@ component App
                     if liveGuesses.length == 0
                       text (livePath == "" ? "Point the camera at what you see." : (pending(liveGuesses) ? "Looking…" : "Nothing recognised yet.")) color="-exact-secondary-label" testId="live-hint"
 
-              if e.name == "new"
+              if e.name == "new" or e.name == "edit"
                 // A pushed screen, not a sheet: Exact's web sheet grows with its content instead
                 // of scrolling, which would put Save off a short window. Back cancels.
                 column navigationKey=`${e.id}` navigationScroll="new-form" position="absolute" inset=0
                   header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
-                    text "New Observation" role="heading" aria-level=2 flex=1
-                    button press=saveNew buttonStyle="bordered-prominent" disabled=(not canSave) testId="new-save"
-                      text (pending(created) ? "Saving…" : "Save")
+                    text (e.name == "edit" ? "Edit Observation" : "New Observation") role="heading" aria-level=2 flex=1
+                    if e.name == "edit"
+                      button press=saveEdit buttonStyle="bordered-prominent" disabled=(not canUpdate) testId="edit-save"
+                        text (pending(updated) ? "Saving…" : "Save")
+                    else
+                      button press=saveNew buttonStyle="bordered-prominent" disabled=(not canSave) testId="new-save"
+                        text (pending(created) ? "Saving…" : "Save")
                   list id="new-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-                    if createError != "" and not pending(created)
+                    if e.name == "new" and createError != "" and not pending(created)
                       section
                         row
                           text createError color="-exact-system-red" flex=1 min-width=0 testId="new-error"
+                    if e.name == "edit" and updateError != "" and not pending(updated)
+                      section
+                        row
+                          text updateError color="-exact-system-red" flex=1 min-width=0 testId="edit-error"
                     section
                       header
                         text "Photos"
+                      if e.name == "edit" and keptPhotos.length > 0
+                        row gap=8 flex-wrap="wrap" padding-top=8 padding-bottom=8
+                          for p, n in keptPhotos key=p.index
+                            button press=dropKept(p.index) aria-label=`Remove photo ${n + 1}` appearance="none" testId=`edit-photo-${n}`
+                              image p.thumb width=72 height=72 object-fit="cover" border-radius=8
                       if newFacts.length > 0
                         row gap=8 flex-wrap="wrap" padding-top=8 padding-bottom=8
                           for f, n in newFacts key=f.path
@@ -1169,10 +1224,10 @@ component App
                                   image "symbol:photo" color="-exact-secondary-label"
                       row
                         button press=choosePhotos testId="new-add-photos"
-                          text (newPhotos.length > 0 ? "Add More Photos" : "Add Photos")
+                          text (newPhotos.length > 0 or (e.name == "edit" and keptPhotos.length > 0) ? "Add More Photos" : "Add Photos")
                         input type="file" accept="image/*" multiple=true id="new-photos" testId="new-photos" display="none" change=addPhotos
                       footer
-                        text (pending(newFacts) ? "Reading your photos…" : (newPhotos.length > 0 ? "Tap a photo to remove it." : "The first photo’s date and place fill in below.")) testId="new-photos-note"
+                        text (pending(newFacts) ? "Reading your photos…" : (newPhotos.length > 0 or (e.name == "edit" and keptPhotos.length > 0) ? "Tap a photo to remove it." : (e.name == "edit" ? "" : "The first photo’s date and place fill in below."))) testId="new-photos-note"
                     section
                       header
                         text "Species"
@@ -1233,7 +1288,7 @@ component App
                         text "Notes"
                       row
                         textarea value=newNotes input=editNotes placeholder="What you noticed" aria-label="Notes" flex=1 min-width=0 testId="new-notes"
-                    if inat.linked
+                    if inat.linked and e.name == "new"
                       section
                         row
                           text "Also post to iNaturalist" flex=1 min-width=0
@@ -1242,7 +1297,7 @@ component App
                       header
                         text "License"
                       row flex-wrap="wrap" gap=8
-                        text "Photos and record" flex=1
+                        text (e.name == "edit" ? "Photos you add" : "Photos and record") flex=1
                         select value=newLicenseShown change=pickNewLicense aria-label="License" testId="new-license"
                           option "None" value=""
                           for l in licenses key=l.value
@@ -1553,6 +1608,7 @@ component ObservationDetail
     openIdentify: action
     withdrawError: string
     removeError: string
+    edit: action
     commentDraft: string
     editComment: action
     postComment: action
@@ -1694,6 +1750,8 @@ component ObservationDetail
                   button press=openExternal(l.url) testId=`external-${l.label}`
                     text `View on ${l.label}`
                 if d.mine
+                  button press=edit testId="edit-observation"
+                    text "Edit Observation"
                   button commandfor="delete-observation" command="show-modal" destructive=true testId="delete-observation"
                     text "Delete Observation"
               if removeError != ""

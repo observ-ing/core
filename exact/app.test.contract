@@ -303,6 +303,45 @@ test "your own observation can be deleted after asking"
   expect tree missing "delete-observation"
   expect tree has "toggle-filters"
 
+test "your own observation can be edited"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect tree missing "edit-observation"
+  back
+  clock settle
+  tap "obs-3mzvx3lfxlr22"
+  clock data
+  clock settle
+  expect text "detail-title" == "Unidentified"
+  tap "edit-observation"
+  clock settle
+  // The form starts from what the observation says now (22:12 UTC: the 9th in any US zone).
+  expect text "new-date" == "2026-11-09"
+  expect text "new-place" == "37.7664, -122.2807 (±50 m)"
+  expect tree missing "new-crosspost"
+  expect enabled "edit-save"
+  type "new-taxon-search" "gavia"
+  clock data
+  tap "new-found-0"
+  expect text "new-taxon" == "Loons · Gavia"
+  type "new-notes" "A loon, seen from the pier."
+  tap "edit-save"
+  clock data
+  clock settle
+  expect tree missing "edit-save"
+  expect text "detail-title" == "Gavia"
+  expect text "detail-remarks" == "A loon, seen from the pier."
+
 test "the default license is saved"
   at "/account"
   epoch "2026-11-09T23:00:00Z"
