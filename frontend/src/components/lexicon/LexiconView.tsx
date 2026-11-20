@@ -19,6 +19,7 @@ import { labelChipSx, valueChipSx } from "../common/chipSx";
 import { denseTableCellSx } from "../common/layoutSx";
 import { monoStack } from "../../theme";
 import { ExpandToggleButton } from "../common/ExpandToggleButton";
+import { PageHeader } from "../common/PageHeader";
 
 // Eagerly import all lexicons at build time via the @lexicons alias.
 // This avoids duplicating the schema files — the source of truth remains in /lexicons/.
@@ -230,7 +231,12 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
   return (
     <Box sx={{ mt: 2 }}>
       <Box
-        sx={{ display: "flex", alignItems: "center", cursor: "pointer", userSelect: "none" }}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          cursor: "pointer",
+          userSelect: "none",
+        }}
         onClick={toggle}
         role="button"
         tabIndex={0}
@@ -310,45 +316,42 @@ function LexiconCard({ schema }: { schema: LexiconSchema }) {
 export function LexiconView() {
   usePageTitle("Lexicons");
   return (
-    <Box sx={{ maxWidth: 960, width: "100%", mx: "auto", p: { xs: 2, md: 3 }, minWidth: 0 }}>
-      <Typography
-        variant="h4"
-        gutterBottom
-        sx={{
-          fontWeight: 700,
-        }}
-      >
-        Lexicons
-      </Typography>
-      <Typography
-        variant="body1"
-        sx={{
-          color: "text.secondary",
-          mb: 3,
-        }}
-      >
-        Observ.ing is built on the{" "}
-        <MuiLink href="https://atproto.com" target="_blank" rel="noopener noreferrer">
-          AT Protocol
-        </MuiLink>
-        . All data is stored as records defined by these{" "}
-        <MuiLink
-          href="https://atproto.com/guides/lexicon"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Lexicon
-        </MuiLink>{" "}
-        schemas, which follow{" "}
-        <MuiLink href="https://dwc.tdwg.org" target="_blank" rel="noopener noreferrer">
-          Darwin Core
-        </MuiLink>{" "}
-        biodiversity standards.
-      </Typography>
+    <Box
+      sx={{
+        maxWidth: 960,
+        width: "100%",
+        mx: "auto",
+        p: { xs: 2, md: 3 },
+        minWidth: 0,
+      }}
+    >
+      <PageHeader
+        title="Lexicons"
+        subtitle={
+          <>
+            Observ.ing is built on the{" "}
+            <MuiLink href="https://atproto.com" target="_blank" rel="noopener noreferrer">
+              AT Protocol
+            </MuiLink>
+            . All data is stored as records defined by these{" "}
+            <MuiLink
+              href="https://atproto.com/guides/lexicon"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Lexicon
+            </MuiLink>{" "}
+            schemas, which follow{" "}
+            <MuiLink href="https://dwc.tdwg.org" target="_blank" rel="noopener noreferrer">
+              Darwin Core
+            </MuiLink>{" "}
+            biodiversity standards.
+          </>
+        }
+      />
       <Typography
         variant="h5"
         sx={{
-          fontWeight: 600,
           mt: 2,
           mb: 2,
         }}
@@ -361,7 +364,6 @@ export function LexiconView() {
       <Typography
         variant="h5"
         sx={{
-          fontWeight: 600,
           mt: 4,
           mb: 1,
         }}
