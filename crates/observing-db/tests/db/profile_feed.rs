@@ -12,12 +12,14 @@ use observing_db::{feeds, identifications, occurrences};
 const ALICE: &str = "did:plc:alice";
 const BOB: &str = "did:plc:bob";
 
-fn occurrence(did: &str, n: i64, scientific_name: &str) -> UpsertOccurrenceParams {
+/// An occurrence as the ingester stores it: the record carries no taxon, so
+/// `scientific_name` is always NULL. Its taxon comes from identifications.
+fn occurrence(did: &str, n: i64) -> UpsertOccurrenceParams {
     UpsertOccurrenceParams {
         uri: format!("at://{did}/bio.lexicons.temp.v0-1.occurrence/r{n}"),
         cid: "bafyoccurrence".into(),
         did: did.into(),
-        scientific_name: Some(scientific_name.into()),
+        scientific_name: None,
         event_date_start: None,
         event_date_end: None,
         event_date_raw: None,
@@ -38,14 +40,19 @@ fn occurrence(did: &str, n: i64, scientific_name: &str) -> UpsertOccurrenceParam
     }
 }
 
-fn identification(did: &str, n: i64, subject_uri: &str) -> UpsertIdentificationParams {
+fn identification(
+    did: &str,
+    n: i64,
+    subject_uri: &str,
+    scientific_name: &str,
+) -> UpsertIdentificationParams {
     UpsertIdentificationParams {
         uri: format!("at://{did}/bio.lexicons.temp.v0-1.identification/r{n}"),
         cid: "bafyidentification".into(),
         did: did.into(),
         subject_uri: subject_uri.into(),
         subject_cid: "bafyoccurrence".into(),
-        scientific_name: "Acer rubrum".into(),
+        scientific_name: scientific_name.into(),
         taxon_rank: None,
         taxon_id: None,
         date_identified: Utc::now() - Duration::minutes(n),
@@ -67,21 +74,28 @@ async fn profile_feed_returns_counts_and_newest_pages() {
     let Some(db) = common::scratch().await else {
         return;
     };
+    // Alice's species count comes from the community IDs of her own
+    // occurrences, here set by bob's identifications.
     let names = ["Acer rubrum", "Acer rubrum", "Quercus alba"];
     for (n, name) in names.into_iter().enumerate() {
-        occurrences::upsert(&db.pool, &occurrence(ALICE, n as i64, name))
+        let alices = occurrence(ALICE, n as i64);
+        occurrences::upsert(&db.pool, &alices).await.unwrap();
+        identifications::upsert(&db.pool, &identification(BOB, n as i64, &alices.uri, name))
             .await
             .unwrap();
     }
-    occurrences::upsert(&db.pool, &occurrence(BOB, 0, "Pinus strobus"))
+    let bobs = occurrence(BOB, 0).uri;
+    occurrences::upsert(&db.pool, &occurrence(BOB, 0))
         .await
         .unwrap();
-    let bobs = occurrence(BOB, 0, "Pinus strobus").uri;
     for n in 0..3 {
-        identifications::upsert(&db.pool, &identification(ALICE, n, &bobs))
+        identifications::upsert(&db.pool, &identification(ALICE, n, &bobs, "Pinus strobus"))
             .await
             .unwrap();
     }
+    identifications::refresh_community_ids(&db.pool)
+        .await
+        .unwrap();
 
     let feed = feeds::get_profile_feed(&db.pool, ALICE, &options(ProfileFeedType::All))
         .await
@@ -93,8 +107,8 @@ async fn profile_feed_returns_counts_and_newest_pages() {
     assert_eq!(
         occurrence_uris,
         [
-            occurrence(ALICE, 0, "").uri.as_str(),
-            occurrence(ALICE, 1, "").uri.as_str()
+            occurrence(ALICE, 0).uri.as_str(),
+            occurrence(ALICE, 1).uri.as_str()
         ],
         "newest two of alice's occurrences"
     );
@@ -106,8 +120,8 @@ async fn profile_feed_returns_counts_and_newest_pages() {
     assert_eq!(
         identification_uris,
         [
-            identification(ALICE, 0, "").uri.as_str(),
-            identification(ALICE, 1, "").uri.as_str()
+            identification(ALICE, 0, "", "").uri.as_str(),
+            identification(ALICE, 1, "", "").uri.as_str()
         ],
         "newest two of alice's identifications"
     );
