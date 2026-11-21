@@ -401,6 +401,8 @@ test "your own observation can be edited"
   expect text "new-quantity" == ""
   expect enabled "edit-save"
   type "new-quantity" "2"
+  type "new-link-draft" "https://bugguide.net/node/view/1"
+  tap "new-link-add"
   type "new-taxon-search" "gavia"
   clock data
   tap "new-found-0"
@@ -413,6 +415,7 @@ test "your own observation can be edited"
   expect text "detail-title" == "Gavia"
   expect text "detail-remarks" == "A loon, seen from the pier."
   expect text "detail-quantity" == "2 (individuals)"
+  expect tree has "external-BugGuide"
 
 test "the theme can be set, and it's kept"
   at "/account"
@@ -535,6 +538,52 @@ test "a new observation can span several days and count what was seen"
   clock settle
   expect text "detail-date" == "May 1, 2026 – May 3, 2026"
   expect text "detail-quantity" == "12 (percent cover)"
+
+test "a new observation takes a typed name, a time zone and links elsewhere"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-new-observation"
+  clock settle
+  tap "new-place-on-map"
+  type "new-taxon-search" "Gavia nova"
+  clock data
+  tap "new-taxon-typed"
+  expect text "new-taxon" == "Gavia nova"
+  // A name the taxonomy doesn't have needs its kingdom.
+  expect disabled "new-save"
+  type "new-taxon-kingdom" "Animalia"
+  type "new-taxon-rank" "species"
+  expect enabled "new-save"
+  type "new-date" "2026-05-04"
+  type "new-time" "08:30"
+  expect text "new-zone" == "local"
+  type "new-zone" "-07:00"
+  type "new-link-draft" "ftp://example.org/1"
+  expect text "new-link-note" == "Links must start with https:// or at://."
+  expect disabled "new-link-add"
+  type "new-link-draft" "https://www.inaturalist.org/observations/123"
+  tap "new-link-add"
+  expect text "new-link-0" == "https://www.inaturalist.org/observations/123"
+  type "new-link-draft" "https://www.inaturalist.org/observations/123"
+  expect text "new-link-note" == "That link is already added."
+  type "new-link-draft" "at://did:plc:fixtureother/org.example.sighting/1"
+  tap "new-link-add"
+  expect text "new-link-1" == "at://did:plc:fixtureother/org.example.sighting/1"
+  tap "new-save"
+  clock data
+  clock settle
+  expect text "detail-title" == "Gavia nova"
+  // 8:30 at UTC-7, shown in the test's UTC.
+  expect text "detail-date" == "May 4, 2026 at 3:30 PM"
+  expect tree has "external-iNaturalist"
+  expect text "external-record" == "Also recorded as at://did:plc:fixtureother/org.example.sighting/1"
 
 test "the sheet shows a picked photo's preview, date, place and suggestions"
   at "/account"

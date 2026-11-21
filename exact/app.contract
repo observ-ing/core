@@ -199,6 +199,7 @@ shape PhotoFact
   path: string
   thumb: string
   takenAt: string
+  offset: string
   hasPlace: bool
   latitude: number
   longitude: number
@@ -369,6 +370,13 @@ component App
   state newEndDate = ""
   state newQuantity = ""
   state newQuantityType = "individuals"
+  // A UTC offset ("-07:00") or "local" once the person picks one: until then, the photo's.
+  state newZone = ""
+  // A name typed in, not picked from the taxonomy: it takes its kingdom and rank from the form.
+  state newTaxonTyped = false
+  // Links to the same sighting on other sites.
+  state newLinks: string[] = []
+  state newLinkDraft = ""
   // Editing your own observation reuses the new one's form; these are the photos it keeps, by index.
   state editKept: number[] = []
   // Batch upload: the picked photos and each one's chosen species; a place for those without GPS.
@@ -500,8 +508,17 @@ component App
   derive locateError = pending(located) ? "" : match failure(located) { case some(f) => "Your location isn’t available. Place the pin on a map instead.", case none => "" }
   derive createError = match created { case some(r) => r.error, case none => "" }
   derive endBeforeStart = newEndDate != "" and newEndDate < newDayShown
-  derive canSave = newHasPlace and not endBeforeStart and not pending(created) and not pending(newFacts)
-  derive canUpdate = newHasPlace and not endBeforeStart and not pending(updated) and not pending(newFacts)
+  derive photoOffset = match first(newFacts) { case some(f) => f.offset, case none => "" }
+  // The photo's offset goes with the photo's clock: a date set by hand is this device's.
+  derive newZoneShown = newZone != "" ? newZone : (newDate == "" and newTime == "" and photoOffset != "" ? photoOffset : "local")
+  derive newZoneSent = newZoneShown == "local" ? "" : newZoneShown
+  derive utcOffsets = ["-12:00", "-11:00", "-10:00", "-09:30", "-09:00", "-08:00", "-07:00", "-06:00", "-05:00", "-04:00", "-03:30", "-03:00", "-02:00", "-01:00", "+00:00", "+01:00", "+02:00", "+03:00", "+03:30", "+04:00", "+04:30", "+05:00", "+05:30", "+05:45", "+06:00", "+06:30", "+07:00", "+08:00", "+08:45", "+09:00", "+09:30", "+10:00", "+10:30", "+11:00", "+12:00", "+12:45", "+13:00", "+14:00"]
+  derive needsKingdom = newTaxonTyped and newTaxonKingdom == ""
+  derive linkDraft = newLinkDraft.trim()
+  derive linkProblem = linkDraft == "" ? "" : (not (linkDraft.toLowerCase().startsWith("https://") or linkDraft.toLowerCase().startsWith("http://") or linkDraft.toLowerCase().startsWith("at://")) ? "Links must start with https:// or at://." : (linkDraft.length > 512 ? "Links must be under 512 characters." : (newLinks.includes(linkDraft) ? "That link is already added." : "")))
+  derive canAddLink = linkDraft != "" and linkProblem == "" and newLinks.length < 10
+  derive canSave = newHasPlace and not endBeforeStart and not needsKingdom and not pending(created) and not pending(newFacts)
+  derive canUpdate = newHasPlace and not endBeforeStart and not needsKingdom and not pending(updated) and not pending(newFacts)
   derive updateError = match updated { case some(r) => r.error, case none => "" }
   derive keptPhotos = detail.photos.filter(p => editKept.includes(p.index))
   derive newCrosspost = inat.linked and (newCrosspostTouched ? newCrosspostOn : inat.crosspost)
@@ -520,6 +537,7 @@ component App
   derive cameraError = pending(cameraOpened) ? "" : match failure(cameraOpened) { case some(f) => (f.code == "NotAllowedError" ? "The camera is off for observ.ing. Turn it on in Settings." : "The camera couldn’t start."), case none => "" }
   derive qualityList = quality == "" ? [] : quality.split(",")
   derive filterCount = (kingdom != "" ? 1 : 0) + (taxon != "" ? 1 : 0) + (startDate != "" ? 1 : 0) + (endDate != "" ? 1 : 0) + qualityList.length
+  derive ranks = ["kingdom", "phylum", "class", "order", "family", "genus", "species", "subspecies", "variety", "form"]
   derive kingdoms = [Choice(value="Animalia", label="Animals"), Choice(value="Plantae", label="Plants"), Choice(value="Fungi", label="Fungi"), Choice(value="Bacteria", label="Bacteria"), Choice(value="Archaea", label="Archaea"), Choice(value="Protozoa", label="Protozoa"), Choice(value="Chromista", label="Chromista")]
   derive criteria = [Choice(value="HAS_DATE", label="Has date"), Choice(value="HAS_LOCATION", label="Has location"), Choice(value="PRECISE_LOCATION", label="Precise location"), Choice(value="HAS_MEDIA", label="Has photo or sound"), Choice(value="HAS_CONSENSUS_ID", label="Community ID")]
 
@@ -809,6 +827,10 @@ component App
       newEndDate = ""
       newQuantity = ""
       newQuantityType = "individuals"
+      newZone = ""
+      newTaxonTyped = false
+      newLinks = []
+      newLinkDraft = ""
       newTaxonQuery = ""
       newTaxonName = scientificName
       newTaxonRank = rank
@@ -835,6 +857,10 @@ component App
       newEndDate = ""
       newQuantity = ""
       newQuantityType = "individuals"
+      newZone = ""
+      newTaxonTyped = false
+      newLinks = []
+      newLinkDraft = ""
       newCrosspostTouched = false
       nav = push(nav, "/new")
   action choosePhotos
@@ -853,6 +879,16 @@ component App
     newQuantity = v
   action pickQuantityType(v: string)
     newQuantityType = v
+  action pickZone(v: string)
+    newZone = v
+  action editLinkDraft(v: string)
+    newLinkDraft = v
+  action addLink
+    if canAddLink
+      newLinks = newLinks.concat([linkDraft])
+      newLinkDraft = ""
+  action removeLink(uri: string)
+    newLinks = newLinks.filter(l => l != uri)
   action useMyLocation
     if not pending(located)
       send located = getCurrentPosition(enableHighAccuracy=true, timeout=15000)
@@ -879,12 +915,25 @@ component App
   action searchNewTaxon(v: string)
     newTaxonQuery = v
   action pickTaxon(scientificName: string, rank: string, kingdom: string, label: string)
+    newTaxonTyped = false
     newTaxonName = scientificName
     newTaxonRank = rank
     newTaxonKingdom = kingdom
     newTaxonLabel = label
     newTaxonQuery = ""
+  action useTypedName
+    newTaxonTyped = true
+    newTaxonName = newTaxonQuery.trim()
+    newTaxonRank = ""
+    newTaxonKingdom = ""
+    newTaxonLabel = newTaxonQuery.trim()
+    newTaxonQuery = ""
+  action pickTypedKingdom(v: string)
+    newTaxonKingdom = v
+  action pickTypedRank(v: string)
+    newTaxonRank = v
   action clearNewTaxon
+    newTaxonTyped = false
     newTaxonName = ""
     newTaxonRank = ""
     newTaxonKingdom = ""
@@ -895,7 +944,7 @@ component App
     newLicense = v
   action saveNew
     if canSave
-      send created = createObservation(newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newEndDate, newLatShown, newLngShown, newUncertaintyShown, newQuantity, newQuantityType, newNotes, newLicenseShown, newCrosspost)
+      send created = createObservation(newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newEndDate, newZoneSent, newLatShown, newLngShown, newUncertaintyShown, newQuantity, newQuantityType, newLinks, newNotes, newLicenseShown, newCrosspost)
   // Your own observation's form, filled in with what it says now.
   action openEdit
     newPhotos = []
@@ -915,13 +964,17 @@ component App
     newEndDate = detail.endDay
     newQuantity = detail.quantity
     newQuantityType = detail.quantityType != "" ? detail.quantityType : "individuals"
+    newZone = ""
+    newTaxonTyped = false
+    newLinks = detail.links.map(l => l.url)
+    newLinkDraft = ""
     editKept = detail.photos.map(p => p.index)
     nav = push(nav, path("edit", detail.did, detail.rkey))
   action dropKept(index: number)
     editKept = editKept.filter(i => i != index)
   action saveEdit
     if canUpdate
-      send updated = updateObservation(detail.uri, editKept, newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newEndDate, newLatShown, newLngShown, newUncertaintyShown, newQuantity, newQuantityType, newNotes, newLicenseShown)
+      send updated = updateObservation(detail.uri, editKept, newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newEndDate, newZoneSent, newLatShown, newLngShown, newUncertaintyShown, newQuantity, newQuantityType, newLinks, newNotes, newLicenseShown)
   action afterUpdate
     match updated
       case some(r)
@@ -1325,6 +1378,19 @@ component App
                             text capitalized(newTaxonRank) font="-exact-footnote" color="-exact-secondary-label"
                           button press=clearNewTaxon aria-label="Change species" testId="new-taxon-clear"
                             image "symbol:close"
+                        if newTaxonTyped
+                          row flex-wrap="wrap" gap=8
+                            text "Kingdom" flex=1
+                            select value=newTaxonKingdom change=pickTypedKingdom aria-label="Kingdom of the name" testId="new-taxon-kingdom"
+                              option "Choose…" value=""
+                              for k in kingdoms key=k.value
+                                option k.label value=k.value
+                          row flex-wrap="wrap" gap=8
+                            text "Rank (optional)" flex=1
+                            select value=newTaxonRank change=pickTypedRank aria-label="Rank of the name" testId="new-taxon-rank"
+                              option "Not given" value=""
+                              for r in ranks key=r
+                                option capitalized(r) value=r
                       else
                         for sg, n in newSuggestions key=sg.scientificName
                           row press=pickTaxon(sg.scientificName, sg.rank, sg.kingdom, (sg.commonName != "" ? `${sg.commonName} · ${sg.scientificName}` : sg.scientificName))
@@ -1338,8 +1404,11 @@ component App
                           row press=pickTaxon(t.scientificName, t.rank, t.kingdom, (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName))
                             role="button" tabindex=0 testId=`new-found-${n}`
                             text (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName) color="-exact-link" flex=1 min-width=0
+                        if newTaxonQuery.trim().length >= 2 and not pending(newFound)
+                          row press=useTypedName role="button" tabindex=0 testId="new-taxon-typed"
+                            text `Use “${newTaxonQuery.trim()}” as typed` color="-exact-link" flex=1 min-width=0
                       footer
-                        text (newTaxonName != "" ? "" : (pending(newSuggestions) ? "Looking at your photo…" : (newSuggestions.length > 0 ? "Suggestions from your first photo." : "Leave it empty if you don’t know: others can identify it.")))
+                        text (needsKingdom ? "A name that isn’t in the taxonomy needs its kingdom." : newTaxonName != "" ? "" : (pending(newSuggestions) ? "Looking at your photo…" : (newSuggestions.length > 0 ? "Suggestions from your first photo." : "Leave it empty if you don’t know: others can identify it.")))
                     section
                       header
                         text "When"
@@ -1352,6 +1421,12 @@ component App
                       row flex-wrap="wrap" gap=8
                         text "Last day (optional)" flex=1
                         input type="date" value=newEndDate change=setNewEndDate aria-label="Last day observed" testId="new-end-date"
+                      row flex-wrap="wrap" gap=8
+                        text "Time zone" flex=1
+                        select value=newZoneShown change=pickZone aria-label="Time zone" testId="new-zone"
+                          option "This device’s" value="local"
+                          for z in utcOffsets key=z
+                            option `UTC${z}` value=z
                       footer
                         text (endBeforeStart ? "The last day can’t be before the first." : (newEndDate != "" ? "Over several days: the time isn’t kept." : (newDate == "" and newTime == "" and photoTakenAt != "" ? "From the photo." : "")))
                           color=(endBeforeStart ? "-exact-system-red" : "-exact-secondary-label") testId="new-date-note"
@@ -1388,6 +1463,22 @@ component App
                         text "Notes"
                       row
                         textarea value=newNotes input=editNotes placeholder="What you noticed" aria-label="Notes" flex=1 min-width=0 testId="new-notes"
+                    section
+                      header
+                        text "Also Recorded On"
+                      for l, n in newLinks key=l
+                        row gap=8 align-items="center"
+                          text l flex=1 min-width=0 overflow-wrap="break-word" testId=`new-link-${n}`
+                          button press=removeLink(l) aria-label=`Remove link ${n + 1}` testId=`new-link-remove-${n}`
+                            image "symbol:close"
+                      row gap=8 align-items="center"
+                        input type="text" value=newLinkDraft input=editLinkDraft placeholder="https://www.inaturalist.org/observations/123456789"
+                          aria-label="Link to the same sighting elsewhere" flex=1 min-width=0 testId="new-link-draft"
+                        button press=addLink disabled=(not canAddLink) testId="new-link-add"
+                          text "Add"
+                      footer
+                        text (linkProblem != "" ? linkProblem : (newLinks.length >= 10 ? "At most 10 links." : "The same sighting on another site: an https:// or at:// link."))
+                          color=(linkProblem != "" ? "-exact-system-red" : "-exact-secondary-label") testId="new-link-note"
                     if inat.linked and e.name == "new"
                       section
                         row
@@ -1966,9 +2057,12 @@ component ObservationDetail
                       text (crosspostBusy ? "Posting…" : (crosspost.status == "failed" ? "Try Posting Again" : "Post to iNaturalist"))
                 if crosspostError != ""
                   text crosspostError color="-exact-system-red" testId="crosspost-error" overflow-wrap="break-word"
+            // An at:// link is shown, not opened: which app should show it isn't ours to say.
+            for l in d.links.filter(l => not l.url.startsWith("http")) key=l.url
+              text `Also recorded as ${l.url}` font="-exact-footnote" color="-exact-secondary-label" overflow-wrap="break-word" testId="external-record"
             if d.links.length > 0 or d.mine
               row gap=8 flex-wrap="wrap"
-                for l in d.links key=l.url
+                for l in d.links.filter(l => l.url.startsWith("http")) key=l.url
                   button press=openExternal(l.url) testId=`external-${l.label}`
                     text `View on ${l.label}`
                 if d.mine
