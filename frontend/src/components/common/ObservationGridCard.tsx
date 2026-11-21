@@ -6,7 +6,7 @@ import type { Occurrence } from "../../services/types";
 import { getImageUrl } from "../../services/api";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "./RelativeTime";
-import { shouldItalicizeTaxonName } from "./TaxonLink";
+import { taxonNameFontStyle } from "./TaxonLink";
 import { ImageWithSkeleton } from "./ImageWithSkeleton";
 import { pendingCardSx } from "./PendingBadge";
 
@@ -51,10 +51,7 @@ export const ObservationGridCard = memo(function ObservationGridCard({
           <Typography
             variant="body2"
             sx={{
-              fontStyle:
-                species && shouldItalicizeTaxonName(species, observation.effectiveTaxonomy?.rank)
-                  ? "italic"
-                  : "normal",
+              fontStyle: taxonNameFontStyle(species, observation.effectiveTaxonomy?.rank),
               color: "primary.main",
               fontWeight: 500,
               overflow: "hidden",

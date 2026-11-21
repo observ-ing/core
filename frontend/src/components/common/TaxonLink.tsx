@@ -16,6 +16,19 @@ export function shouldItalicizeTaxonName(name: string, rank?: string): boolean {
   return name.trim().includes(" ");
 }
 
+/**
+ * The `fontStyle` for a taxon name in `sx`: italic for genus and below, upright
+ * otherwise. One place for the rule so every scientific name renders alike
+ * instead of each call site re-spelling the `? "italic" : "normal"` ternary.
+ * A missing name (nothing identified yet) renders upright.
+ */
+export function taxonNameFontStyle(
+  name: string | null | undefined,
+  rank?: string,
+): "italic" | "normal" {
+  return name && shouldItalicizeTaxonName(name, rank) ? "italic" : "normal";
+}
+
 export interface TaxonLinkProps {
   /** The taxon name to display */
   name: string;

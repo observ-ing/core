@@ -21,7 +21,7 @@ import { useProfileFeed } from "../../lib/query/hooks";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
-import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { taxonNameFontStyle } from "../common/TaxonLink";
 import { ObservationGridCard, observationGridCardContentSx } from "../common/ObservationGridCard";
 import { ObservationGridCardSkeleton } from "../common/ObservationGridCardSkeleton";
 import { CenteredSpinner } from "../common/CenteredSpinner";
@@ -200,9 +200,7 @@ export function ProfileView() {
                   <Typography
                     variant="body2"
                     sx={{
-                      fontStyle: shouldItalicizeTaxonName(id.scientific_name, id.taxon_rank)
-                        ? "italic"
-                        : "normal",
+                      fontStyle: taxonNameFontStyle(id.scientific_name, id.taxon_rank),
                       color: "primary.main",
                       fontWeight: 500,
                     }}

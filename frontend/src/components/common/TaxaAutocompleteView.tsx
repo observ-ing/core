@@ -3,7 +3,7 @@ import { Autocomplete, Box, Stack, Typography } from "@mui/material";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
 import { renderAutocompleteInput } from "./autocompleteInput";
-import { shouldItalicizeTaxonName } from "./TaxonLink";
+import { taxonNameFontStyle } from "./TaxonLink";
 import { buildTaxonUrl } from "../../lib/taxonSlug";
 import { ExternalLinkIconButton } from "./ExternalLinkIconButton";
 import { TaxonThumbnail } from "./TaxonThumbnail";
@@ -126,9 +126,7 @@ export function TaxaAutocompleteView({
                   <Typography
                     sx={{
                       fontWeight: 600,
-                      fontStyle: shouldItalicizeTaxonName(option.scientificName, option.rank)
-                        ? "italic"
-                        : "normal",
+                      fontStyle: taxonNameFontStyle(option.scientificName, option.rank),
                     }}
                   >
                     {option.scientificName}
