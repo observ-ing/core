@@ -36,6 +36,18 @@ export const pageTitleSx = { fontWeight: 700 } as const;
 /** Bold weight for `h6` headings that title a panel or card (batch editor panel, empty drop zone, landing feature cards). */
 export const panelTitleSx = { fontWeight: 700 } as const;
 
+/** Dashed frame for the empty-batch photo drop zone (desktop drop target, phone start screen). Callers add spacing, fill and the hover/drag border color. */
+export const dropZoneFrameSx = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  textAlign: "center",
+  border: 2,
+  borderStyle: "dashed",
+  borderColor: "divider",
+  borderRadius: 2,
+} as const;
+
 /** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
 export const pillButtonSx = { borderRadius: 2 } as const;
 
