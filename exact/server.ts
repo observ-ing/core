@@ -83,12 +83,13 @@ function overlay(d: Detail, viewer: boolean): Detail {
 }
 type CreateBody = { latitude?: number; longitude?: number; coordinateUncertaintyInMeters?: number; eventDate?: string;
   images?: { data: string; mimeType: string }[]; license?: string; scientificName?: string; taxonRank?: string; kingdom?: string;
-  occurrenceRemarks?: string; organismQuantity?: string; organismQuantityType?: string };
+  occurrenceRemarks?: string; organismQuantity?: string; organismQuantityType?: string;
+  externalRecords?: { uri: string; service?: string }[] };
 const createdOnes = new Map<string, CreateBody>();
 let lastCreate: CreateBody | null = null;
 // Edits to recorded observations: the request, laid over the record as the
 // appview's ingester would, with a new CID.
-type UpdateBody = CreateBody & { uri: string; retainedBlobCids?: string[]; eventRemarks?: string; externalRecords?: unknown[] };
+type UpdateBody = CreateBody & { uri: string; retainedBlobCids?: string[]; eventRemarks?: string };
 const edits = new Map<string, UpdateBody>();
 let lastUpdate: UpdateBody | null = null;
 function edited(d: Detail, r: UpdateBody): Detail {
@@ -96,7 +97,7 @@ function edited(d: Detail, r: UpdateBody): Detail {
   const images = ((o.images ?? []) as { url: string }[]).filter((img) => r.retainedBlobCids?.includes(img.url.split('/').at(-1) ?? ''))
     .concat((r.images ?? []).map((_, i) => ({ url: `/media/blob/${PERSON.did}/bafyedit${i}`, license: r.license })) as never[]);
   return { ...d, occurrence: { ...o, cid: `bafyedited${edits.size}`, eventDate: r.eventDate, occurrenceRemarks: r.occurrenceRemarks,
-    organismQuantity: r.organismQuantity, organismQuantityType: r.organismQuantityType,
+    organismQuantity: r.organismQuantity, organismQuantityType: r.organismQuantityType, externalRecords: r.externalRecords ?? [],
     location: { latitude: r.latitude, longitude: r.longitude, uncertaintyMeters: r.coordinateUncertaintyInMeters }, images,
     ...(r.scientificName ? { effectiveTaxonomy: { scientificName: r.scientificName, rank: r.taxonRank, kingdom: r.kingdom } } : {}) } };
 }
@@ -110,7 +111,7 @@ function createdDetail(uri: string, r: CreateBody) {
       eventDate: r.eventDate, location: { latitude: r.latitude, longitude: r.longitude, uncertaintyMeters: r.coordinateUncertaintyInMeters },
       occurrenceRemarks: r.occurrenceRemarks, organismQuantity: r.organismQuantity, organismQuantityType: r.organismQuantityType,
       images: (r.images ?? []).map((_, i) => ({ url: `/media/blob/${PERSON.did}/bafynew${i}`, license: r.license })),
-      externalRecords: [], createdAt: new Date().toISOString(), likeCount: 0,
+      externalRecords: r.externalRecords ?? [], createdAt: new Date().toISOString(), likeCount: 0,
       qualityIssues: r.scientificName ? [] : ['NO_CONSENSUS_ID'],
     },
     identifications: [], comments: [],

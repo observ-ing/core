@@ -206,6 +206,7 @@ function describe(path: string, store: Store, storage: Storage): Promise<PhotoFa
         path,
         thumb,
         takenAt: exif.takenAt,
+        offset: exif.offset,
         hasPlace: exif.latitude !== null && exif.longitude !== null,
         latitude: exif.latitude ?? 0,
         longitude: exif.longitude ?? 0,
@@ -315,11 +316,36 @@ function eventRange(s: string | null | undefined): { endDay: string; observedFro
   if (!endDay || !from) return { endDay: '', observedFrom: 0, observedUntil: 0 };
   return { endDay, observedFrom: Date.parse(from), observedUntil: Date.parse(endDay) };
 }
-// What a form's day, time and last day send: an interval of days, or an instant
-// in this device's zone.
-function eventDateOf(dateTime: string, endDay: string): string {
+// What a form's day, time, last day and zone send: an interval of days, or an
+// instant at that UTC offset ("" for this device's zone).
+function eventDateOf(dateTime: string, endDay: string, zone: string): string {
   if (!dateTime) return '';
-  return endDay ? `${dateTime.slice(0, 10)}/${endDay}` : new Date(dateTime).toISOString();
+  if (endDay) return `${dateTime.slice(0, 10)}/${endDay}`;
+  return new Date(zone ? `${dateTime}:00${zone}` : dateTime).toISOString();
+}
+// What a link reads as: its service's name, else its host, else what it is.
+function linkLabel(r: { uri: string; service?: string | null }): string {
+  const known = r.service ? ({ inaturalist: 'iNaturalist', bugguide: 'BugGuide' } as Record<string, string>)[r.service.toLowerCase()] : undefined;
+  if (known) return known;
+  try {
+    const host = new URL(r.uri).hostname.replace(/^www\./, '');
+    if (host && !r.uri.startsWith('at://')) return host;
+  } catch {
+    // An at:// URI has no host URL can read.
+  }
+  return r.service || (r.uri.startsWith('at://') ? 'AT Protocol record' : r.uri);
+}
+// A link to the same sighting elsewhere, with the lexicon's `service` where its
+// host is one we know (an iNaturalist node or self-hosted one, BugGuide).
+function externalRecord(uri: string): { uri: string; service?: string } {
+  let host = '';
+  try {
+    host = new URL(uri).hostname.toLowerCase();
+  } catch {
+    // An at:// URI, or one URL can't read: no service.
+  }
+  const service = host.includes('inaturalist') ? 'inaturalist' : host.includes('bugguide.net') ? 'bugguide' : undefined;
+  return service ? { uri, service } : { uri };
 }
 const quantityLabel = (o: Occurrence) =>
   o.organismQuantity ? `${o.organismQuantity}${o.organismQuantityType ? ` (${o.organismQuantityType.replace(/-/g, ' ')})` : ''}` : '';
@@ -485,7 +511,7 @@ const sources: Sources = {
         mine: i.identifier.did === kept(store)?.did,
       })),
       comments: d.comments.map((c) => ({ uri: c.uri, who: name(c.commenter), whoDid: c.commenter.did, body: c.body, at: instant(c.created_at) })),
-      links: o.externalRecords.map((r) => ({ url: r.uri, label: r.service === 'inaturalist' ? 'iNaturalist' : (r.service ?? new URL(r.uri).host) })),
+      links: o.externalRecords.map((r) => ({ url: r.uri, label: linkLabel(r) })),
     };
   },
 
@@ -739,7 +765,7 @@ const sources: Sources = {
   },
 
   createObservation: async (
-    [paths, scientificName, rank, kingdom, eventDate, endDate, latitude, longitude, uncertainty, quantity, quantityType, notes, license, crosspost], store, storage,
+    [paths, scientificName, rank, kingdom, eventDate, endDate, zone, latitude, longitude, uncertainty, quantity, quantityType, links, notes, license, crosspost], store, storage,
   ) => {
     const fail = (error: string) => ({ ok: false, error, did: '', rkey: '' });
     if (!kept(store)) return fail('Sign in first.');
@@ -757,8 +783,9 @@ const sources: Sources = {
         latitude,
         longitude,
         ...(uncertainty > 0 ? { coordinateUncertaintyInMeters: Math.round(uncertainty) } : {}),
-        ...(eventDate ? { eventDate: eventDateOf(eventDate, endDate) } : {}),
+        ...(eventDate ? { eventDate: eventDateOf(eventDate, endDate, zone) } : {}),
         ...(quantity.trim() ? { organismQuantity: quantity.trim(), ...(quantityType ? { organismQuantityType: quantityType } : {}) } : {}),
+        ...(links.length > 0 ? { externalRecords: links.map(externalRecord) } : {}),
         images,
         ...(license ? { license } : {}),
         ...(scientificName ? { scientificName, ...(rank ? { taxonRank: rank } : {}), ...(kingdom ? { kingdom } : {}) } : {}),
@@ -790,10 +817,10 @@ const sources: Sources = {
   },
 
   // An edit of your own observation. The form names what it shows; whatever it
-  // doesn't (links, event remarks) is sent back as the record has it,
+  // doesn't (event remarks) is sent back as the record has it,
   // since the appview clears what an edit omits.
   updateObservation: async (
-    [uri, keptPhotos, paths, scientificName, rank, kingdom, eventDate, endDate, latitude, longitude, uncertainty, quantity, quantityType, notes, license], store, storage,
+    [uri, keptPhotos, paths, scientificName, rank, kingdom, eventDate, endDate, zone, latitude, longitude, uncertainty, quantity, quantityType, links, notes, license], store, storage,
   ) => {
     const fail = (error: string) => ({ ok: false, error });
     if (!kept(store)) return fail('Sign in first.');
@@ -812,8 +839,8 @@ const sources: Sources = {
       const retainedBlobCids = o.images.filter((_, i) => keptPhotos.includes(i)).map((img) => img.url.split('/').at(-1) ?? '');
       // Unchanged in the form, the date keeps what the record says (a date with
       // no time, an interval's exact ends); changed, it's what the form says.
-      const unchanged = eventDate === formDateTime(o.eventDate) && endDate === eventRange(o.eventDate).endDay;
-      const date = unchanged ? o.eventDate ?? '' : eventDateOf(eventDate, endDate);
+      const unchanged = eventDate === formDateTime(o.eventDate) && endDate === eventRange(o.eventDate).endDay && !zone;
+      const date = unchanged ? o.eventDate ?? '' : eventDateOf(eventDate, endDate, zone);
       // A new name only: sending the one shown would add your identification to it.
       const renamed = scientificName && scientificName !== (o.effectiveTaxonomy?.scientificName ?? '');
       request = {
@@ -823,7 +850,11 @@ const sources: Sources = {
         ...(uncertainty > 0 ? { coordinateUncertaintyInMeters: Math.round(uncertainty) } : {}),
         ...(date ? { eventDate: date } : {}),
         ...(quantity.trim() ? { organismQuantity: quantity.trim(), ...(quantityType ? { organismQuantityType: quantityType } : {}) } : {}),
-        ...(o.externalRecords.length > 0 ? { externalRecords: o.externalRecords.map((r) => ({ uri: r.uri, ...(r.service ? { service: r.service } : {}) })) } : {}),
+        // A link the record has keeps its own service; a new one gets ours.
+        ...(links.length > 0 ? { externalRecords: links.map((l) => {
+          const had = o.externalRecords.find((r) => r.uri === l);
+          return had ? { uri: had.uri, ...(had.service ? { service: had.service } : {}) } : externalRecord(l);
+        }) } : {}),
         ...(o.eventRemarks ? { eventRemarks: o.eventRemarks } : {}),
         ...(notes.trim() ? { occurrenceRemarks: notes.trim() } : {}),
         retainedBlobCids,

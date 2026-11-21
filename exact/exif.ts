@@ -5,19 +5,23 @@
 export type PhotoExif = {
   // "YYYY-MM-DDTHH:mm", the camera's own clock, as an <input type="datetime-local"> holds it.
   takenAt: string;
+  // The UTC offset that clock was in ("-07:00"), when the camera wrote one; else "".
+  offset: string;
   latitude: number | null;
   longitude: number | null;
   // Metres, from GPSHPositioningError when the camera wrote one.
   uncertainty: number | null;
 };
 
-const NONE: PhotoExif = { takenAt: '', latitude: null, longitude: null, uncertainty: null };
+const NONE: PhotoExif = { takenAt: '', offset: '', latitude: null, longitude: null, uncertainty: null };
 
 const TAG = {
   exifIfd: 0x8769,
   gpsIfd: 0x8825,
   dateTimeOriginal: 0x9003,
   dateTime: 0x0132,
+  offsetTimeOriginal: 0x9011,
+  offsetTime: 0x9010,
   latRef: 0x0001,
   lat: 0x0002,
   lngRef: 0x0003,
@@ -100,6 +104,9 @@ function fromTiff(v: DataView): PhotoExif {
   const stamp = ascii(exif.get(TAG.dateTimeOriginal)) || ascii(ifd0.get(TAG.dateTime));
   const m = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2})/.exec(stamp);
   const takenAt = m ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}` : '';
+  // OffsetTime goes with DateTime, so it only stands in for the original's when that's missing too.
+  const zone = (ascii(exif.get(TAG.offsetTimeOriginal)) || (ascii(exif.get(TAG.dateTimeOriginal)) ? '' : ascii(exif.get(TAG.offsetTime)))).trim();
+  const offset = takenAt && /^[+-]\d{2}:\d{2}$/.test(zone) ? zone : '';
 
   const degrees = (parts: number[], ref: string) => {
     if (parts.length < 3 || parts.some((p) => !Number.isFinite(p))) return null;
@@ -112,6 +119,7 @@ function fromTiff(v: DataView): PhotoExif {
   const placed = latitude !== null && longitude !== null && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
   return {
     takenAt,
+    offset,
     latitude: placed ? latitude : null,
     longitude: placed ? longitude : null,
     uncertainty: placed && Number.isFinite(err) ? Math.round(err) : null,
