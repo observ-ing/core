@@ -25,6 +25,7 @@ test "an unidentified observation shows what it lacks"
   clock settle
   expect text "detail-title" == "Unidentified"
   expect text "needs-id" == "Needs an identification"
+  expect tree missing "agree-id"
   expect tree has "data-quality"
   expect tree missing "detail-photo"
 
@@ -286,6 +287,42 @@ test "an identification is suggested from search, then withdrawn"
   clock data
   expect tree missing "ident-1"
   expect tree missing "withdraw-id"
+
+test "signed out, Agree opens Account instead"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "agree-id"
+  clock settle
+  expect tree has "handle"
+
+test "Agree adds the shown name as yours, until you withdraw it"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect tree missing "ident-1"
+  tap "agree-id"
+  clock data
+  clock settle
+  expect tree has "ident-1"
+  expect tree missing "agree-id"
+  tap "withdraw-id"
+  clock settle
+  tap "withdraw-confirm"
+  clock data
+  expect tree missing "ident-1"
+  expect tree has "agree-id"
 
 test "notifications open their observation and can all be marked read"
   at "/account"
