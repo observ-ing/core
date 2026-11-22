@@ -17,6 +17,8 @@ routes nav
       edit "/observation/:did/:rkey/edit"
     profile "/profile/:did"
     taxon "/taxon/:kingdom/:name"
+    // observ.ing's link to a taxon it has no kingdom for: a GBIF id or a scientific name.
+    taxonRef "/taxon/:id"
     search "/search"
     new "/new"
     batch "/batch"
@@ -79,6 +81,10 @@ shape IdRow
   kingdom: string
   at: number
   mine: bool
+  // The observer's first identification.
+  observer: bool
+  // Its author has a newer one.
+  superseded: bool
 
 shape CommentRow
   uri: string
@@ -148,6 +154,17 @@ shape TaxonRow
   commonName: string
   rank: string
   photo: string
+  // The synonym a search matched, which says why this taxon is listed ("" for its own names).
+  synonym: string
+
+// A row of a taxon's tree: a taxon it includes, how deep, and whether it's open.
+shape TreeRow
+  key: string
+  t: TaxonRow
+  depth: number
+  open: bool
+  // Known to include nothing.
+  leaf: bool
 
 shape Crumb
   kingdom: string
@@ -178,6 +195,8 @@ shape CommonsPicture
 shape TaxonPage
   kingdom: string
   name: string
+  // The id or name a /taxon/:id link asked for ("" for /taxon/:kingdom/:name).
+  ref: string
   found: bool
   missing: bool
   scientificName: string
@@ -323,6 +342,9 @@ shape Time
   epochAtZero: number
   utcOffset: number
 
+// Whether the taxon page loaded is the one a route asks for: by id, or by kingdom and name.
+fn taxonShows(t: TaxonPage, kingdom: string, name: string, id: string): bool = id != "" ? t.ref == id : (t.ref == "" and t.kingdom == kingdom and t.name == name)
+
 // A species reads by its common name, else its scientific name; neither is "Unidentified".
 fn titleOf(o: Observation): string = o.commonName != "" ? o.commonName : (o.scientificName != "" ? o.scientificName : "Unidentified")
 fn taxonTitle(common: string, scientific: string): string = common != "" ? common : scientific
@@ -350,6 +372,10 @@ component App
   state feedPages = 1
   state profilePages = 1
   state taxonPages = 1
+  // The taxa opened in the taxon page's tree, by "kingdom/name".
+  state treeOpen: string[] = []
+  // A write's success, said for a moment over the page.
+  state toast = ""
   state query = ""
   state handleDraft = ""
   state homePages = 1
@@ -411,13 +437,15 @@ component App
   derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify" or x.name == "edit").at(-1) { case some(x) => x.params.did, case none => "" }
   derive obsRkey = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify" or x.name == "edit").at(-1) { case some(x) => x.params.rkey, case none => "" }
   derive profileDid = match stack(nav).filter(x => x.name == "profile").at(-1) { case some(x) => x.params.did, case none => "" }
-  derive taxonKingdom = match stack(nav).filter(x => x.name == "taxon").at(-1) { case some(x) => x.params.kingdom, case none => "" }
-  derive taxonName = match stack(nav).filter(x => x.name == "taxon").at(-1) { case some(x) => x.params.name, case none => "" }
+  derive taxonKingdom = match stack(nav).filter(x => x.name == "taxon" or x.name == "taxonRef").at(-1) { case some(x) => x.params.kingdom, case none => "" }
+  derive taxonName = match stack(nav).filter(x => x.name == "taxon" or x.name == "taxonRef").at(-1) { case some(x) => x.params.name, case none => "" }
+  derive taxonRefId = match stack(nav).filter(x => x.name == "taxon" or x.name == "taxonRef").at(-1) { case some(x) => x.params.id, case none => "" }
 
   resource feed = loadFeed(kingdom, taxon, quality, startDate, endDate, feedPages) as shape Feed else empty()
   resource detail = loadObservation(obsDid, obsRkey) as shape Detail else empty()
   resource person = loadProfile(profileDid, profilePages) as shape ProfilePage else empty()
-  resource taxonPage = loadTaxon(taxonKingdom, taxonName, taxonPages) as shape TaxonPage else empty()
+  resource taxonPage = loadTaxon(taxonKingdom, taxonName, taxonRefId, taxonPages) as shape TaxonPage else empty()
+  resource tree = taxonTree(taxonPage.kingdom, taxonPage.found ? taxonPage.name : "", treeOpen) as shape TreeRow[] else empty()
   resource commons = commonsPictures(commonsFor) as shape CommonsPicture[] else empty()
   resource found = searchTaxa(query) as shape TaxonRow[] else empty()
   resource account = session() as shape Account else empty()
@@ -432,8 +460,8 @@ component App
   mutation liked as shape Reply refreshes detail
   mutation commented as shape Reply refreshes detail then afterComment
   mutation identified as shape Reply refreshes detail, feed, home then afterIdentify
-  mutation unidentified as shape Reply refreshes detail, feed, home
-  mutation agreed as shape Reply refreshes detail, feed, home
+  mutation unidentified as shape Reply refreshes detail, feed, home then afterWithdraw
+  mutation agreed as shape Reply refreshes detail, feed, home then afterAgree
   mutation removed as shape Reply refreshes feed, home, person, taxonPage then afterRemove
   mutation marked as shape Reply refreshes notes, unread
   mutation licensed as shape Reply refreshes prefs
@@ -464,6 +492,8 @@ component App
   mutation cameraStopped as shape MediaStreamTrack
   mutation shot as shape CameraPhoto then shotTaken
   // Uploads go out on their own while there's something waiting; a live camera looks every few seconds.
+  task dismissToast when toast != "" key=toast
+    after(3000, hideToast)
   task flush mount
     every(20000, flushQueue)
   task liveLoop mount
@@ -608,6 +638,8 @@ component App
     refresh person
   action morePerson
     profilePages = profilePages + 1
+  action toggleTree(key: string)
+    treeOpen = treeOpen.includes(key) ? treeOpen.filter(k => k != key) : treeOpen.concat([key])
   action reloadTaxon
     refresh taxonPage
   action moreTaxon
@@ -650,9 +682,12 @@ component App
   action postComment
     if commentDraft.trim() != "" and not pending(commented)
       send commented = addComment(detail.uri, detail.cid, commentDraft)
+  action hideToast
+    toast = ""
   action afterComment
     if commentOk
       commentDraft = ""
+      toast = "Comment posted."
   action openIdentify
     if not account.signedIn
       nav = select(nav, "account")
@@ -665,8 +700,24 @@ component App
     if not pending(identified)
       send identified = addIdentification(detail.uri, detail.cid, scientificName, rank, kingdom)
   action afterIdentify
-    if identifyOk and top(nav).name == "identify"
-      nav = back(nav)
+    if identifyOk
+      toast = "Your identification is saved."
+      if top(nav).name == "identify"
+        nav = back(nav)
+  action afterAgree
+    match agreed
+      case some(r)
+        if r.ok
+          toast = "Your agreement is saved."
+      case none
+        toast = toast
+  action afterWithdraw
+    match unidentified
+      case some(r)
+        if r.ok
+          toast = "Your identification is withdrawn."
+      case none
+        toast = toast
   action agree
     if not account.signedIn
       nav = select(nav, "account")
@@ -678,8 +729,10 @@ component App
   action deleteObservation
     send removed = removeObservation(detail.uri)
   action afterRemove
-    if removeOk and top(nav).name == "observation"
-      nav = back(nav)
+    if removeOk
+      toast = "Observation deleted."
+      if top(nav).name == "observation"
+        nav = back(nav)
   // A link's own press runs instead of following it: open the observation here.
   action readNote(id: number, read: bool, url: string)
     if not read
@@ -982,9 +1035,11 @@ component App
   action afterUpdate
     match updated
       case some(r)
-        if r.ok and top(nav).name == "edit"
-          nav = back(nav)
-          newPhotos = []
+        if r.ok
+          toast = "Changes saved."
+          if top(nav).name == "edit"
+            nav = back(nav)
+            newPhotos = []
       case none
         newPhotos = newPhotos
   // Saved: close the sheet and open the new observation.
@@ -1178,16 +1233,16 @@ component App
                   else
                     Waiting(id=`profile-${e.id}`, busy=pending(person), error=personError, retry=reloadPerson, testPrefix="profile")
 
-              if e.name == "taxon"
+              if e.name == "taxon" or e.name == "taxonRef"
                 column navigationKey=`${e.id}` navigationScroll=`taxon-${e.id}` position="absolute" inset=0
                   header display="flex" align-items="center" padding="8px 16px"
-                    text (taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name ? taxonTitle(taxonPage.commonName, taxonPage.scientificName) : e.params.name) role="heading" aria-level=2 testId="taxon-title"
-                  if taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name
-                    TaxonDetail(t=taxonPage, now=now, offset=offset, scrollId=`taxon-${e.id}`, busy=pending(taxonPage), more=moreTaxon, openExternal=openExternal, explore=exploreTaxon,
+                    text (taxonPage.found and taxonShows(taxonPage, e.params.kingdom, e.params.name, e.params.id) ? taxonTitle(taxonPage.commonName, taxonPage.scientificName) : (e.params.id != "" ? e.params.id : e.params.name)) role="heading" aria-level=2 testId="taxon-title"
+                  if taxonPage.found and taxonShows(taxonPage, e.params.kingdom, e.params.name, e.params.id)
+                    TaxonDetail(t=taxonPage, tree=tree, toggleTree=toggleTree, now=now, offset=offset, scrollId=`taxon-${e.id}`, busy=pending(taxonPage), more=moreTaxon, openExternal=openExternal, explore=exploreTaxon,
                       commons=(commonsFor == taxonPage.scientificName ? commons : []), commonsAsked=(commonsFor != "" and commonsFor == taxonPage.scientificName),
                       commonsBusy=pending(commons), commonsFailed=(match failure(commons) { case some(f) => true, case none => false }), showCommons=showCommons)
-                  else if taxonPage.missing and not pending(taxonPage) and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name
-                    NotFound(id=`taxon-${e.id}`, title="Taxon not found", message=`observ.ing’s taxonomy has no ${e.params.name} in ${e.params.kingdom}.`,
+                  else if taxonPage.missing and not pending(taxonPage) and taxonShows(taxonPage, e.params.kingdom, e.params.name, e.params.id)
+                    NotFound(id=`taxon-${e.id}`, title="Taxon not found", message=(e.params.id != "" ? `observ.ing’s taxonomy has no ${e.params.id}.` : `observ.ing’s taxonomy has no ${e.params.name} in ${e.params.kingdom}.`),
                       retry=reloadTaxon, testPrefix="taxon")
                   else
                     Waiting(id=`taxon-${e.id}`, busy=pending(taxonPage), error=taxonError, retry=reloadTaxon, testPrefix="taxon")
@@ -1417,8 +1472,10 @@ component App
                             flex=1 min-width=0 testId="new-taxon-search"
                         for t, n in newFound key=`${t.kingdom}/${t.name}`
                           row press=pickTaxon(t.scientificName, t.rank, t.kingdom, (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName))
-                            role="button" tabindex=0 testId=`new-found-${n}`
+                            role="button" tabindex=0 flex-wrap="wrap" gap="2px 8px" testId=`new-found-${n}`
                             text (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName) color="-exact-link" flex=1 min-width=0
+                            if t.synonym != ""
+                              text `syn. ${t.synonym}` font="-exact-footnote" color="-exact-secondary-label"
                         if newTaxonQuery.trim().length >= 2 and not pending(newFound)
                           row press=useTypedName role="button" tabindex=0 testId="new-taxon-typed"
                             text `Use “${newTaxonQuery.trim()}” as typed` color="-exact-link" flex=1 min-width=0
@@ -1522,6 +1579,8 @@ component App
                       for t, n in idFound key=`${t.kingdom}/${t.name}`
                         button press=pickId(t.scientificName, t.rank, t.kingdom) disabled=pending(identified) testId=`identify-${n}`
                           text (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName) flex=1 min-width=0
+                          if t.synonym != ""
+                            text `syn. ${t.synonym}` font="-exact-footnote" color="-exact-secondary-label"
                       if idFound.length == 0
                         row
                           text (idQuery.trim().length < 2 ? "Type at least two letters." : (pending(idFound) ? "Searching…" : "No taxa found.")) color="-exact-secondary-label"
@@ -1700,6 +1759,10 @@ component App
         button role="tab" aria-controls="panel-account" aria-selected=(nav.tab == "account") press=pick("account") testId="tab-account" flex=1
           image "symbol:person"
           text (account.signedIn ? "You" : "Sign In")
+      if toast != ""
+        text toast position="absolute" bottom="calc(6rem + env(safe-area-inset-bottom))" left=16 right=16 max-width="24rem" margin="0 auto"
+          padding=12 border-radius=12 text-align="center" backgroundMaterial="thin" box-shadow="0 4px 16px rgba(0, 0, 0, 0.2)"
+          pointer-events="none" aria-live="polite" testId="toast"
 
 
 // Observations as a grid of cards that fills the width: two across on a phone,
@@ -1879,6 +1942,8 @@ component TaxonLinkRow
         column flex=1 min-width=0 gap=2
           text taxonTitle(t.commonName, t.scientificName) testId=`${testId}-name`
           text (t.commonName != "" ? `${capitalized(t.rank)} · ${t.scientificName}` : capitalized(t.rank)) font="-exact-footnote" color="-exact-secondary-label"
+          if t.synonym != ""
+            text `syn. ${t.synonym}` font="-exact-footnote" color="-exact-secondary-label" testId=`${testId}-synonym`
       image "symbol:forward-chevron"
 
 component Stat
@@ -2017,10 +2082,10 @@ component ObservationDetail
               for i, n in d.identifications key=i.uri
                 if i.kingdom != ""
                   CardLink(href=path("taxon", i.kingdom, i.scientificName), testId=`ident-${n}`)
-                    IdText(i=i, now=now, offset=offset)
+                    IdText(i=i, n=n, now=now, offset=offset)
                 else
                   row padding="10px 0" testId=`ident-${n}`
-                    IdText(i=i, now=now, offset=offset)
+                    IdText(i=i, n=n, now=now, offset=offset)
               if d.identifications.length == 0
                 text "No identifications yet." color="-exact-secondary-label" padding="6px 0" overflow-wrap="break-word"
               row gap=8 flex-wrap="wrap" padding-top=4
@@ -2118,17 +2183,25 @@ component Fact
 component IdText
   props
     i: IdRow
+    n: number
     now: number
     offset: number
   view
-    column flex=1 min-width=0 gap=2 padding-top=4 padding-bottom=4
-      text i.scientificName font-style="italic"
+    column flex=1 min-width=0 gap=2 padding-top=4 padding-bottom=4 opacity=(i.superseded ? 0.6 : 1)
+      row gap="2px 8px" flex-wrap="wrap" align-items="baseline"
+        text i.scientificName font-style="italic" text-decoration=(i.superseded ? "line-through" : "none")
+        if i.observer
+          text "Observer’s ID" font="-exact-footnote" color="-exact-system-blue" testId=`ident-${n}-observer`
+        if i.superseded
+          text "Superseded" font="-exact-footnote" color="-exact-secondary-label" testId=`ident-${n}-superseded`
       text `${i.who} · ${capitalized(i.rank)}${i.rank != "" ? " · " : ""}${formatDay(i.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
 
 // A taxon: its picture, names, place in the tree, what it includes, its observations and pictures.
 component TaxonDetail
   props
     t: TaxonPage
+    tree: TreeRow[]
+    toggleTree: action
     now: number
     offset: number
     scrollId: string
@@ -2191,8 +2264,15 @@ component TaxonDetail
             if t.children.length > 0
               column class=Card padding="12px 16px 4px" flex="1 1 18rem" min-width=0 testId="taxon-children"
                 text (t.descendants > 0 ? `Includes · ${formatNumber(t.descendants, "compact")} taxa` : "Includes") role="heading" aria-level=2 font="-exact-headline"
-                for c, n in t.children.slice(0, 50) key=`${c.kingdom}/${c.name}`
-                  TaxonCardLink(t=c, testId=`child-${n}`)
+                for r, n in tree key=r.key
+                  row gap=4 align-items="center" padding-left=`${r.depth * 20}px`
+                    if r.leaf
+                      view width=32 flex-shrink=0
+                    else
+                      button press=toggleTree(r.key) aria-expanded=r.open flex-shrink=0 width=32 testId=`child-${n}-toggle`
+                        aria-label=(r.open ? `Hide what ${r.t.scientificName} includes` : `Show what ${r.t.scientificName} includes`)
+                        image "symbol:forward-chevron" rotate=(r.open ? "90deg" : "0deg")
+                    TaxonCardLink(t=r.t, testId=`child-${n}`)
         text countOf(t.observationCount, "Observation", "Observations") role="heading" aria-level=2 font="-exact-title3" font-weight=600 testId="taxon-count"
         if t.items.length > 0
           ObservationGrid(items=t.items, now=now, prefix="tobs", showObserver=true)

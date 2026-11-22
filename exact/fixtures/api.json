@@ -5141,5 +5141,1022 @@
    }
   ],
   "cursor": "2026-11-09 06:24:28.352425 UTC"
- }
+ },
+ "/api/taxa/Gavia immer": {
+  "id": "Animalia/Gavia immer",
+  "scientificName": "Gavia immer",
+  "commonName": "Common Loon",
+  "photoUrl": "http://commons.wikimedia.org/wiki/Special:FilePath/Gavia%20immer%20-Minocqua%2C%20Wisconsin%2C%20USA%20-swimming-8.jpg?width=600",
+  "rank": "species",
+  "kingdom": "Animalia",
+  "phylum": "Chordata",
+  "class": "Aves",
+  "order": "Gaviiformes",
+  "family": "Gaviidae",
+  "genus": "Gavia",
+  "species": "Gavia immer",
+  "source": "gbif",
+  "conservationStatus": {
+   "category": "LC",
+   "source": "IUCN"
+  },
+  "description": null,
+  "wikidataId": null,
+  "ancestors": [
+   {
+    "id": "Animalia",
+    "name": "Animalia",
+    "rank": "kingdom"
+   },
+   {
+    "id": "Animalia/Chordata",
+    "name": "Chordata",
+    "rank": "phylum"
+   },
+   {
+    "id": "Animalia/Aves",
+    "name": "Aves",
+    "rank": "class"
+   },
+   {
+    "id": "Animalia/Gaviiformes",
+    "name": "Gaviiformes",
+    "rank": "order"
+   },
+   {
+    "id": "Animalia/Gaviidae",
+    "name": "Gaviidae",
+    "rank": "family"
+   },
+   {
+    "id": "Animalia/Gavia",
+    "name": "Gavia",
+    "rank": "genus"
+   }
+  ],
+  "children": [],
+  "numDescendants": 0,
+  "extinct": null,
+  "descriptions": [
+   {
+    "description": "breeds in northern North America, southern Greenland, and Iceland; winters from southern Alaska and the Maritime Provinces (Canada) to northerm Mexico, and from Iceland and Scandanavia to the Iberian Peninsula",
+    "type": "Distribution",
+    "source": "The Clements Checklist"
+   },
+   {
+    "description": "COR*; FLO; FAI; PIC; GRA; TER; SMG; SMR",
+    "type": "Distribution",
+    "source": "Birds from the Azores: An updated list with some comments on species distribution"
+   },
+   {
+    "description": "Regular Wintering. Rodrigues et al. (2010)",
+    "type": "Notes",
+    "source": "Birds from the Azores: An updated list with some comments on species distribution"
+   },
+   {
+    "description": "Breeding regions are NA, PAL. Breeding subregions are w, se Greenland, Iceland; subarctic to temperate n North America: w Alaska mainland to n tier of contiguous USA, across subarctic Canada to s Baffin I. and New England. Non breeding regions are inshore waters: to nw Europe; Aleutian Is., s Baja California and Gulf of California (nw Mexico); w North Atlantic coast to Florida, Gulf of Mexico to ne Mexico.",
+    "type": "Distribution",
+    "source": "IOC World Bird List, v"
+   }
+  ],
+  "references": [
+   {
+    "citation": "Banks, R. C., R. W. McDiarmid, and A. L. Gardner, 1987: Checklist of Vertebrates of the United States, the U.S. Territories, and Canada. Resource Publication, no. 166. 79.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Banks, R.C., R.W. McDiarmid, and A.L. Gardner. 1987. Checklist of vertebrates of the United States, the U.S. Territories, and Canada. U.S. Fish and Wildlife Service Resource Publication No. 166. 79 p.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Cattrijsse, A. & M. Vincx. (2001). Biodiversity of the benthos and the avifauna of the Belgian coastal waters: summary of data collected between 1970 and 1998. <em>Federal Office for Scientific, Technical and Cultural Affairs: Brussel, Belgium.</em> 48 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Chans JJ, Garrido S, Calderón J (2006) Informe sobre la biodiversidad de Doñana. Listado de Organismos. En: Máñez M. (IP) Diseño y puesta a punto del programa de seguimiento de procesos y recursos naturales en el Parque Nacional de Doñana. Memoria final. Estación Biológica de Doñana-Organismo Autónomo de Parques Nacionales.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Gallardo, J. C.; Macías, V.; Velarde, E. (2009). Birds (Vertebrata: Aves) of the Gulf of Mexico. <em>In: Felder, D.L. and D.K. Camp (eds.), Gulf of Mexico–Origins, Waters, and Biota. Biodiversity. Texas A&M Press, College Station, Texas.</em> Pp. 1321–1342.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "García L, Calderón J, Castroviejo J (1989) Las aves de Doñana y su entorno. Estación Biológica de Doñana (CSIC) - Cooperativa Marismas del Rocío. Sevilla. 136 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "García L, Ibáñez F, Garrido H, Arroyo JL, Máñez M, Calderón J (2000) Prontuario de las Aves de Doñana. Anuario Ornitológico de Doñana. Nº0, Diciembre 2000. Estación Biológica de Doñana y Ayuntamiento de Almonte. Almonte (Huelva). 113 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "García-Novo F, Martín A, Toja J (2007) La Frontera de Doñana. Secretariado de Publicaciones. Vicerrectorado de Investigación. Universidad de Sevilla. Sevilla. 317 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "García-Novo F, Marín-Cabrera C (2005) Doñana. Agua y Biosfera. Ed. Doñana 2005, Confederación Hidrográfica del Guadalquivir, Ministerio de Medio Ambiente. Madrid. 353 pp",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Garrido H, Arroyo JL, García L, Ibáñez F, Máñez M, Vázquez M (2004) Anuario Ornitológico de Doñana, nº 1. (Sep 1999- ago 2001). Equipo de Seguimiento de Procesos Naturales. Estación Biológica de Doñana-CSIC. 188 pp.",
+    "doi": null,
+    "link": null
+   }
+  ],
+  "media": [
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/101157_denhaag_4205.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/101155_denhaag_4121.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/150616_gaviidae_ijsduiker_juveniel_12-11-2014_neeltje_jans.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY-NC-ND"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/246050.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY-NC-ND"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/91692_p1070661_ijsduiker_den_haag_2016-01-10_sander_pieterse.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/146794_wvb_6186.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY-NC"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/146795_wvb_6204.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY-NC"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/101156_denhaag_4150.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY"
+   }
+  ],
+  "gbifUrl": "https://www.gbif.org/species/2481962",
+  "wikidataUrl": "https://www.wikidata.org/wiki/Q190342",
+  "observationCount": 1
+ },
+ "/api/taxa/Gavia immer/occurrences?limit=20": {
+  "occurrences": [
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22",
+    "cid": "bafyreia2btofpdjo2jrtie4wjjlxef72cfgs33itnacfhff4in2zofzig4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Gavia immer",
+    "effectiveTaxonomy": {
+     "scientificName": "Gavia immer",
+     "taxonId": "https://www.gbif.org/species/2481962",
+     "vernacularName": "Common Loon",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Gaviiformes",
+     "family": "Gaviidae",
+     "genus": "Gavia"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T18:49:00.000Z",
+    "location": {
+     "latitude": 37.767042044705974,
+     "longitude": -122.28205244943656,
+     "uncertaintyMeters": 141
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreic3hmbwztbqccnvc7bbuig7e5cophalp2arjwr2rdrnjf6625pj5q",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413737491",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:32:05.689202+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   }
+  ],
+  "cursor": "2026-11-09T06:32:05.689202+00:00|at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22"
+ },
+ "/api/taxa/search?q=eriobotrya japonica": {
+  "results": [
+   {
+    "id": "Plantae/Rhaphiolepis bibas",
+    "taxonId": "https://www.gbif.org/species/10786206",
+    "scientificName": "Rhaphiolepis bibas",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Plantae",
+    "phylum": "Tracheophyta",
+    "class": "Magnoliopsida",
+    "order": "Rosales",
+    "family": "Rosaceae",
+    "genus": "Rhaphiolepis",
+    "species": "Rhaphiolepis bibas",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    },
+    "matchedSynonym": "Eriobotrya japonica"
+   },
+   {
+    "id": "Animalia/Proctolaelaps micropilis",
+    "taxonId": "https://www.gbif.org/species/8651562",
+    "scientificName": "Proctolaelaps micropilis",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Arthropoda",
+    "class": "Arachnida",
+    "order": "Mesostigmata",
+    "family": "Melicharidae",
+    "genus": "Proctolaelaps",
+    "species": "Proctolaelaps micropilis",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    },
+    "matchedSynonym": null
+   },
+   {
+    "id": "Plantae/Rhaphiolepis daduheensis",
+    "taxonId": "https://www.gbif.org/species/10772222",
+    "scientificName": "Rhaphiolepis daduheensis",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Plantae",
+    "phylum": "Tracheophyta",
+    "class": "Magnoliopsida",
+    "order": "Rosales",
+    "family": "Rosaceae",
+    "genus": "Rhaphiolepis",
+    "species": "Rhaphiolepis daduheensis",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    },
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Rhinobombyx cuneata",
+    "taxonId": "https://www.gbif.org/species/1733061",
+    "scientificName": "Rhinobombyx cuneata",
+    "commonName": "Zizzag Eggarlet",
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Arthropoda",
+    "class": "Insecta",
+    "order": "Lepidoptera",
+    "family": "Lasiocampidae",
+    "genus": "Rhinobombyx",
+    "species": "Rhinobombyx cuneata",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    },
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Nippolachnus piri",
+    "taxonId": "https://www.gbif.org/species/2075850",
+    "scientificName": "Nippolachnus piri",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Arthropoda",
+    "class": "Insecta",
+    "order": "Hemiptera",
+    "family": "Aphididae",
+    "genus": "Nippolachnus",
+    "species": "Nippolachnus piri",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    },
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Aphis eugeniae",
+    "taxonId": "https://www.gbif.org/species/9692339",
+    "scientificName": "Aphis eugeniae",
+    "commonName": "Aphid",
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Arthropoda",
+    "class": "Insecta",
+    "order": "Hemiptera",
+    "family": "Aphididae",
+    "genus": "Aphis",
+    "species": "Aphis eugeniae",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    },
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Stoermeriana amblycalymma",
+    "taxonId": "https://www.gbif.org/species/6113965",
+    "scientificName": "Stoermeriana amblycalymma",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Arthropoda",
+    "class": "Insecta",
+    "order": "Lepidoptera",
+    "family": "Lasiocampidae",
+    "genus": "Stoermeriana",
+    "species": "Stoermeriana amblycalymma",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    },
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Aphis exsors",
+    "taxonId": "https://www.gbif.org/species/8154030",
+    "scientificName": "Aphis exsors",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Arthropoda",
+    "class": "Insecta",
+    "order": "Hemiptera",
+    "family": "Aphididae",
+    "genus": "Aphis",
+    "species": "Aphis exsors",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    },
+    "matchedSynonym": null
+   }
+  ]
+ },
+ "/api/taxa/Animalia/Gaviidae": {
+  "id": "Animalia/Gaviidae",
+  "scientificName": "Gaviidae",
+  "commonName": "Divers",
+  "photoUrl": "http://commons.wikimedia.org/wiki/Special:FilePath/Gaviiformes%20-%20all%20species%20of%20loons.jpg?width=600",
+  "rank": "family",
+  "kingdom": "Animalia",
+  "phylum": "Chordata",
+  "class": "Aves",
+  "order": "Gaviiformes",
+  "family": "Gaviidae",
+  "genus": null,
+  "species": null,
+  "source": "gbif",
+  "conservationStatus": {
+   "category": "NE",
+   "source": "IUCN"
+  },
+  "description": null,
+  "wikidataId": null,
+  "ancestors": [
+   {
+    "id": "Animalia",
+    "name": "Animalia",
+    "rank": "kingdom"
+   },
+   {
+    "id": "Animalia/Chordata",
+    "name": "Chordata",
+    "rank": "phylum"
+   },
+   {
+    "id": "Animalia/Aves",
+    "name": "Aves",
+    "rank": "class"
+   },
+   {
+    "id": "Animalia/Gaviiformes",
+    "name": "Gaviiformes",
+    "rank": "order"
+   }
+  ],
+  "children": [
+   {
+    "id": "Animalia/Colymbiculus",
+    "taxonId": "https://www.gbif.org/species/8641030",
+    "scientificName": "Colymbiculus",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Colymbiculus",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": null,
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Colymboides",
+    "taxonId": "https://www.gbif.org/species/4852117",
+    "scientificName": "Colymboides",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Colymboides",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": null,
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Gavia",
+    "taxonId": "https://www.gbif.org/species/2481954",
+    "scientificName": "Gavia",
+    "commonName": "Loons",
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": null,
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Gaviella",
+    "taxonId": "https://www.gbif.org/species/4852114",
+    "scientificName": "Gaviella",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gaviella",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": null,
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Nasidytes",
+    "taxonId": "https://www.gbif.org/species/12218944",
+    "scientificName": "Nasidytes",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Nasidytes",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": null,
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Neogaeornis",
+    "taxonId": "https://www.gbif.org/species/4852115",
+    "scientificName": "Neogaeornis",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Neogaeornis",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": null,
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Polarornis",
+    "taxonId": "https://www.gbif.org/species/4852116",
+    "scientificName": "Polarornis",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Polarornis",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": null,
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/Urinator",
+    "taxonId": "https://www.gbif.org/species/4852102",
+    "scientificName": "Urinator",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Urinator",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": null,
+    "matchedSynonym": null
+   },
+   {
+    "id": "Animalia/? pusilla",
+    "taxonId": "https://www.gbif.org/species/11353859",
+    "scientificName": "? pusilla",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "unranked",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": null,
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": null,
+    "matchedSynonym": null
+   }
+  ],
+  "numDescendants": 37,
+  "extinct": null,
+  "descriptions": null,
+  "references": [
+   {
+    "citation": "Aphia 2006",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Banks, R. C., R. W. McDiarmid, and A. L. Gardner, 1987: Checklist of Vertebrates of the United States, the U.S. Territories, and Canada. Resource Publication, no. 166. 79.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Benton, M.J. (ed). (1993). The Fossil Record 2. Chapman & Hall, London, 845 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Dickinson, Edward C., ed., 2003: null. The Howard and Moore Complete Checklist of the Birds of the World, 3rd edition. 1039.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Gill, Frank, and Minturn Wright, 2006: null. Birds of the World: Recommended English Names. ix + 259.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Harrison, P. (1985). Seabirds: an identification guide. Revised edition. Christopher Helm Publisher. A & C Black: London, UK. ISBN 0-7136-3510-X. 448 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "International Commission on Zoological Nomenclature. Direction 75 Suppression under the Plenary Powers of the family group name Urinatoridae (correction of Urinatores) Vieillot, 1818, and addition to the Official List of Family Group Names in Zoology of the names Podicipitidae (correction of Podicepinae Bonaparte, 1831, and Gaviidae Coues, 1903, as the family-group names for Grebes and Divers (Loons) respectively (class Aves) (Direction supplementary to Opinion 401).Opinions and declarations rendered by the International Commission on Zoological Nomenclature 13(22), 291-308 (1957)",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Larsson, Ekström, Larsson & Gandemo (2007) Birds of the World [CD]",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Muller, Y. (2004). Faune et flore du littoral du Nord, du Pas-de-Calais et de la Belgique: inventaire. [Coastal fauna and flora of the Nord, Pas-de-Calais and Belgium: inventory]. <em>Commission Régionale de Biologie Région Nord Pas-de-Calais: France.</em> 307 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Parker, S.P. (ed). (1982). Synopsis and Classification of Living Organisms. McGraw-Hill, New York. 2 volumes.",
+    "doi": null,
+    "link": null
+   }
+  ],
+  "media": null,
+  "gbifUrl": "https://www.gbif.org/species/9312",
+  "wikidataUrl": "https://www.wikidata.org/wiki/Q21666",
+  "observationCount": 1
+ },
+ "/api/taxa/Animalia/Gaviidae/occurrences?limit=20": {
+  "occurrences": [
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22",
+    "cid": "bafyreia2btofpdjo2jrtie4wjjlxef72cfgs33itnacfhff4in2zofzig4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Gavia immer",
+    "effectiveTaxonomy": {
+     "scientificName": "Gavia immer",
+     "taxonId": "https://www.gbif.org/species/2481962",
+     "vernacularName": "Common Loon",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Gaviiformes",
+     "family": "Gaviidae",
+     "genus": "Gavia"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T18:49:00.000Z",
+    "location": {
+     "latitude": 37.767042044705974,
+     "longitude": -122.28205244943656,
+     "uncertaintyMeters": 141
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreic3hmbwztbqccnvc7bbuig7e5cophalp2arjwr2rdrnjf6625pj5q",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413737491",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:32:05.689202+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   }
+  ],
+  "cursor": "2026-11-09T06:32:05.689202+00:00|at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22"
+ },
+ "/api/taxa/Animalia/Gavia/children": [
+  {
+   "id": "Animalia/Gavia adamsii",
+   "taxonId": "https://www.gbif.org/species/2481957",
+   "scientificName": "Gavia adamsii",
+   "commonName": "Yellow-billed Loon",
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia adamsii",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia arctica",
+   "taxonId": "https://www.gbif.org/species/2481959",
+   "scientificName": "Gavia arctica",
+   "commonName": "Arctic/Pacific Loon",
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia arctica",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia brodkorbi",
+   "taxonId": "https://www.gbif.org/species/8693591",
+   "scientificName": "Gavia brodkorbi",
+   "commonName": null,
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia brodkorbi",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia concinna",
+   "taxonId": "https://www.gbif.org/species/4966465",
+   "scientificName": "Gavia concinna",
+   "commonName": null,
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia concinna",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia egeriana",
+   "taxonId": "https://www.gbif.org/species/4966468",
+   "scientificName": "Gavia egeriana",
+   "commonName": null,
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia egeriana",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia fortis",
+   "taxonId": "https://www.gbif.org/species/4966467",
+   "scientificName": "Gavia fortis",
+   "commonName": null,
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia fortis",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia howardae",
+   "taxonId": "https://www.gbif.org/species/4966464",
+   "scientificName": "Gavia howardae",
+   "commonName": null,
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia howardae",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia immer",
+   "taxonId": "https://www.gbif.org/species/2481962",
+   "scientificName": "Gavia immer",
+   "commonName": "Common Loon",
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia immer",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia immer x arctica",
+   "taxonId": "https://www.gbif.org/species/10023190",
+   "scientificName": "Gavia immer x arctica",
+   "commonName": null,
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia immer x arctica",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia moldavica",
+   "taxonId": "https://www.gbif.org/species/11177485",
+   "scientificName": "Gavia moldavica",
+   "commonName": null,
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia moldavica",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia pacifica",
+   "taxonId": "https://www.gbif.org/species/2481955",
+   "scientificName": "Gavia pacifica",
+   "commonName": "Pacific Loon",
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia pacifica",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia paradoxa",
+   "taxonId": "https://www.gbif.org/species/11125415",
+   "scientificName": "Gavia paradoxa",
+   "commonName": null,
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia paradoxa",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia schultzi",
+   "taxonId": "https://www.gbif.org/species/11146076",
+   "scientificName": "Gavia schultzi",
+   "commonName": null,
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia schultzi",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/Gavia stellata",
+   "taxonId": "https://www.gbif.org/species/2481958",
+   "scientificName": "Gavia stellata",
+   "commonName": "Red-throated Loon",
+   "photoUrl": null,
+   "rank": "species",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": "Gavia stellata",
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  },
+  {
+   "id": "Animalia/BOLD:AAC8620",
+   "taxonId": "https://www.gbif.org/species/9902939",
+   "scientificName": "BOLD:AAC8620",
+   "commonName": null,
+   "photoUrl": null,
+   "rank": "unranked",
+   "kingdom": "Animalia",
+   "phylum": "Chordata",
+   "class": "Aves",
+   "order": "Gaviiformes",
+   "family": "Gaviidae",
+   "genus": "Gavia",
+   "species": null,
+   "source": "gbif",
+   "conservationStatus": null,
+   "matchedSynonym": null
+  }
+ ]
 }

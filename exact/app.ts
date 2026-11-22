@@ -53,6 +53,7 @@ const LINEAGE = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus'] as co
 
 type Observation = Result<'loadFeed'>['items'][number];
 type TaxonRow = Result<'searchTaxa'>[number];
+type TreeRow = Result<'taxonTree'>[number];
 type Paged = { occurrences: Occurrence[]; cursor?: string | null };
 
 // Responses the appview sends without a ts-rs binding (crates/observing-appview/src/responses.rs).
@@ -350,6 +351,25 @@ function externalRecord(uri: string): { uri: string; service?: string } {
   const service = host.includes('inaturalist') ? 'inaturalist' : host.includes('bugguide.net') ? 'bugguide' : undefined;
   return service ? { uri, service } : { uri };
 }
+// Identifications oldest first, as observ.ing lists them: each person's latest
+// stands and their earlier ones are superseded; the observer's first is marked.
+function identificationRows(ids: Identification[], observerDid: string, me: string | undefined) {
+  const sorted = [...ids].sort((a, b) => instant(a.date_identified) - instant(b.date_identified));
+  const latest = new Map(sorted.map((i) => [i.did, i.uri]));
+  const observers = sorted.find((i) => i.did === observerDid)?.uri;
+  return sorted.map((i) => ({
+    uri: i.uri,
+    who: name(i.identifier),
+    whoDid: i.identifier.did,
+    scientificName: i.scientific_name,
+    rank: i.taxon_rank ?? '',
+    kingdom: i.kingdom ?? '',
+    at: instant(i.date_identified),
+    mine: i.identifier.did === me,
+    observer: i.uri === observers,
+    superseded: latest.get(i.did) !== i.uri,
+  }));
+}
 const quantityLabel = (o: Occurrence) =>
   o.organismQuantity ? `${o.organismQuantity}${o.organismQuantityType ? ` (${o.organismQuantityType.replace(/-/g, ' ')})` : ''}` : '';
 // The form's "YYYY-MM-DDTHH:mm" for an event date, as the form builds it from day and time.
@@ -509,16 +529,7 @@ const sources: Sources = {
       taxonKingdom: route?.kingdom ?? '',
       taxonName: route?.name ?? '',
       issues: o.qualityIssues.map((i) => QUALITY[i] ?? i),
-      identifications: d.identifications.map((i) => ({
-        uri: i.uri,
-        who: name(i.identifier),
-        whoDid: i.identifier.did,
-        scientificName: i.scientific_name,
-        rank: i.taxon_rank ?? '',
-        kingdom: i.kingdom ?? '',
-        at: instant(i.date_identified),
-        mine: i.identifier.did === kept(store)?.did,
-      })),
+      identifications: identificationRows(d.identifications, o.observer.did, kept(store)?.did),
       comments: d.comments.map((c) => ({ uri: c.uri, who: name(c.commenter), whoDid: c.commenter.did, body: c.body, at: instant(c.created_at) })),
       links: o.externalRecords.map((r) => ({ url: r.uri, label: linkLabel(r) })),
     };
@@ -550,12 +561,31 @@ const sources: Sources = {
     };
   },
 
-  loadTaxon: async ([kingdom, taxonName, wanted], store) => {
-    const none = { kingdom, name: taxonName, found: false, scientificName: '', commonName: '', rank: '', photo: '', status: '',
+  // What a taxon includes, as a tree: its children, and under each one opened,
+  // that one's, as rows in reading order with their depth.
+  taxonTree: async ([kingdom, name, open], store) => {
+    if (!kingdom || !name) return [];
+    const rows: TreeRow[] = [];
+    const walk = async (k: string, n: string, depth: number) => {
+      for (const t of uniqueRows(await childrenFor(k, n, store)).slice(0, 50)) {
+        const key = `${t.kingdom}/${t.name}`;
+        const opened = open.includes(key) && !LEAF_RANKS.has(t.rank);
+        // A child that won't load shows as closed, and opening it asks again.
+        const below = opened ? await childrenFor(t.kingdom, t.name, store).catch(() => null) : null;
+        rows.push({ key, t, depth, open: !!below, leaf: LEAF_RANKS.has(t.rank) || below?.length === 0 });
+        if (below && below.length > 0) await walk(t.kingdom, t.name, depth + 1);
+      }
+    };
+    await walk(kingdom, name, 0);
+    return rows;
+  },
+
+  loadTaxon: async ([kingdom, taxonName, ref, wanted], store) => {
+    const none = { kingdom, name: taxonName, ref, found: false, scientificName: '', commonName: '', rank: '', photo: '', status: '',
       extinct: false, descriptions: [], references: [], referenceCount: 0, observationCount: 0, descendants: 0, ancestors: [], children: [],
       media: [], gbifUrl: '', wikidataUrl: '', items: [], more: false, missing: false };
-    if (!kingdom || !taxonName) return none;
-    const base = `/api/taxa/${encodeURIComponent(kingdom)}/${encodeURIComponent(taxonName)}`;
+    if (!ref && (!kingdom || !taxonName)) return none;
+    const base = ref ? `/api/taxa/${encodeURIComponent(ref)}` : `/api/taxa/${encodeURIComponent(kingdom)}/${encodeURIComponent(taxonName)}`;
     let t: TaxonDetailWithCount;
     try {
       t = await get<TaxonDetailWithCount>(base, store);
@@ -570,8 +600,11 @@ const sources: Sources = {
       ...(t.descriptions ?? []).map((d) => ({ text: stripTags(d.description), source: d.source ?? '' })),
     ].filter((d, i, all) => d.text !== '' && all.findIndex((e) => e.text === d.text) === i).slice(0, 2);
     const references = t.references ?? [];
+    // What it includes is the tree's first level.
+    childrenOf.set(`${t.kingdom ?? kingdom}/${t.scientificName}`, t.children);
     return {
-      kingdom, name: taxonName, found: true, missing: false,
+      // By id, the page is named as its kingdom-and-name route names it.
+      kingdom: ref ? t.kingdom ?? '' : kingdom, name: ref ? t.scientificName : taxonName, ref, found: true, missing: false,
       scientificName: t.scientificName,
       commonName: t.commonName ?? '',
       rank: t.rank,
@@ -586,7 +619,7 @@ const sources: Sources = {
       observationCount: Number(t.observationCount),
       descendants: t.numDescendants ?? 0,
       ancestors: t.ancestors.map((a) => ({ ...taxonRoute(a.id), scientificName: a.name, rank: a.rank })),
-      children: [...new Map(t.children.map(toTaxonRow).map((c) => [`${c.kingdom}/${c.name}`, c])).values()],
+      children: uniqueRows(t.children),
       media: (t.media ?? []).filter((m) => m.type === 'StillImage').slice(0, 12)
         .map((m, i) => ({ index: i, url: m.url, credit: [m.creator, m.license, m.source].filter(Boolean).join(' · ') })),
       gbifUrl: t.gbifUrl ?? '',
@@ -1089,6 +1122,22 @@ const sources: Sources = {
   },
 };
 
+// Each taxon once (the taxonomy can list a child under two ids).
+const uniqueRows = (ts: TaxaResult[]) => [...new Map(ts.map(toTaxonRow).map((c) => [`${c.kingdom}/${c.name}`, c])).values()];
+
+// A taxon's children, by kingdom and name, as the taxon page or the tree read them.
+const childrenOf = new Map<string, TaxaResult[]>();
+async function childrenFor(kingdom: string, name: string, store: Store): Promise<TaxaResult[]> {
+  const key = `${kingdom}/${name}`;
+  const known = childrenOf.get(key);
+  if (known) return known;
+  const children = await get<TaxaResult[]>(`/api/taxa/${encodeURIComponent(kingdom)}/${encodeURIComponent(name)}/children`, store);
+  childrenOf.set(key, children);
+  return children;
+}
+// Ranks with nothing below them to open.
+const LEAF_RANKS = new Set(['subspecies', 'variety', 'form']);
+
 function toTaxonRow(t: TaxaResult): TaxonRow {
   return {
     ...taxonRoute(t.id, t.kingdom, t.scientificName),
@@ -1096,6 +1145,7 @@ function toTaxonRow(t: TaxaResult): TaxonRow {
     commonName: t.commonName ?? '',
     rank: t.rank,
     photo: t.photoUrl ?? '',
+    synonym: t.matchedSynonym ?? '',
   };
 }
 
