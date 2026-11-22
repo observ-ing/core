@@ -23,6 +23,7 @@ import type { InatAccountResponse } from "../bindings/InatAccountResponse";
 import type { InatAuthorizeResponse } from "../bindings/InatAuthorizeResponse";
 import type { CrosspostStatusResponse } from "../bindings/CrosspostStatusResponse";
 import type { CreateCrosspostRequest } from "../bindings/CreateCrosspostRequest";
+import type { PhotoOrderEntry } from "../bindings/PhotoOrderEntry";
 
 export const API_BASE = import.meta.env["VITE_API_URL"] || "";
 const DEFAULT_PAGE_SIZE = "20";
@@ -282,7 +283,11 @@ export async function submitObservation(
 }
 
 export async function updateObservation(
-  data: ObservationInput & { uri: string; retainedBlobCids?: string[] },
+  data: ObservationInput & {
+    uri: string;
+    retainedBlobCids?: string[];
+    photoOrder?: PhotoOrderEntry[];
+  },
 ): Promise<{ uri: string; cid: string }> {
   return fetchApi(`${API_BASE}/api/occurrences`, "Failed to update", {
     method: "PUT",

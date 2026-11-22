@@ -132,6 +132,17 @@ pub struct ImageUpload {
     mime_type: String,
 }
 
+/// One photo in an edit's `photoOrder`.
+#[derive(Debug, PartialEq, Eq, Deserialize, TS, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub enum PhotoOrderEntry {
+    /// An existing photo to keep, by its blob CID.
+    Retained(String),
+    /// The photo at this index in the request's `images`.
+    New(usize),
+}
+
 #[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
@@ -158,9 +169,17 @@ pub struct UpdateOccurrenceRequest {
     #[ts(optional)]
     images: Option<Vec<ImageUpload>>,
     /// Blob CIDs of existing media records to retain on the updated occurrence.
-    /// Media whose CID is not in this list is dropped from the record.
+    /// Media whose CID is not in this list is dropped from the record. Ignored
+    /// when `photoOrder` is sent.
     #[ts(optional)]
     retained_blob_cids: Option<Vec<String>>,
+    /// The occurrence's photos after the edit, in order: each entry is an
+    /// existing photo to keep, by blob CID, or one of `images`, by index.
+    /// When sent, existing photos it leaves out are removed, and every entry
+    /// of `images` must appear in it exactly once. Without it, retained photos
+    /// keep their order and `images` follow them.
+    #[ts(optional)]
+    photo_order: Option<Vec<PhotoOrderEntry>>,
     /// License URI to apply to *newly-uploaded* media records on this edit.
     /// Retained media keep whatever license they were originally written with —
     /// silently rewriting historical metadata when a default changes would lose
@@ -258,6 +277,7 @@ pub async fn create_occurrence(
         license,
     )
     .await?;
+    let media_refs: Vec<StrongRef> = media_refs.into_iter().flatten().collect();
 
     // Remarks are written before the occurrence that references them (see
     // `remarks`), and each names the occurrence as its subject, so the
@@ -543,8 +563,9 @@ pub async fn delete_occurrence(
 /// Applies the edit on top of the record on the caller's PDS. The request is
 /// the full new state of the fields it carries: omitted optional fields are
 /// cleared, and existing media is kept only if its blob CID is listed in
-/// `retainedBlobCids`, or if observ.ing couldn't find its photo to show in
-/// the first place. Fields the request has no counterpart for, such as
+/// `photoOrder` (or in `retainedBlobCids` when no `photoOrder` is sent), or if
+/// observ.ing couldn't find its photo to show in the first place. Fields the
+/// request has no counterpart for, such as
 /// Darwin Core terms the form doesn't expose or fields another app wrote, are
 /// kept as they were, and so is the record's original `createdAt`.
 #[utoipa::path(
@@ -575,6 +596,10 @@ pub async fn update_occurrence(
         None => None,
     };
     let remark_texts = body.normalized_remarks()?;
+    let new_images = body.images.as_deref().unwrap_or(&[]);
+    if let Some(order) = &body.photo_order {
+        check_photo_order(order, new_images.len())?;
+    }
 
     // Parse AT URI and enforce ownership / collection match
     let at_uri =
@@ -612,23 +637,20 @@ pub async fn update_occurrence(
 
     let retained_cids = body.retained_blob_cids.clone().unwrap_or_default();
 
-    let mut media_refs = retained_media_refs(
-        existing_media_refs,
-        &existing_blobs,
-        &retained_cids,
-        |uri| fetch_media_blob_cid(&agent, uri),
-    )
+    let existing_photos = existing_photos(existing_media_refs, &existing_blobs, |uri| {
+        fetch_media_blob_cid(&agent, uri)
+    })
     .await;
 
-    // Upload new images and append their strong refs to what was retained
-    let (_new_blob_entries, new_media_refs) = upload_media_records(
-        &agent,
-        &user.did,
-        body.images.as_deref().unwrap_or(&[]),
-        license,
-    )
-    .await?;
-    media_refs.extend(new_media_refs);
+    // Upload new images, then place their strong refs among what was retained
+    let (_new_blob_entries, new_media_refs) =
+        upload_media_records(&agent, &user.did, new_images, license).await?;
+    let media_refs = edited_media_refs(
+        existing_photos,
+        new_media_refs,
+        &retained_cids,
+        body.photo_order.as_deref(),
+    );
 
     // Remarks: edit in place with putRecord, create when newly added, and
     // hold deletions until the occurrence write below has dropped the
@@ -756,7 +778,8 @@ pub async fn update_occurrence(
 }
 
 /// Upload each image as a blob, create a `bio.lexicons.temp.v0-1.media` record per
-/// blob, and return parallel `(blob_entries, media_refs)` vecs. The DB stores
+/// blob, and return `(blob_entries, media_refs)`, with one media ref per image
+/// (`None` where its media record couldn't be created). The DB stores
 /// blob entries for efficient image serving; the PDS occurrence record stores
 /// strong refs to the media records under `media`. Media-record
 /// creation failures are logged and skipped (blob already uploaded is retained
@@ -766,7 +789,7 @@ async fn upload_media_records(
     user_did: &str,
     images: &[ImageUpload],
     license: Option<&str>,
-) -> Result<(Vec<BlobEntry>, Vec<StrongRef>), AppError> {
+) -> Result<(Vec<BlobEntry>, Vec<Option<StrongRef>>), AppError> {
     use base64::Engine;
 
     // Check every photo before uploading any, so one that's too large doesn't
@@ -823,21 +846,31 @@ async fn upload_media_records(
         }
         let did_for_media = atrium_api::types::string::Did::new(user_did.to_string())
             .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-        match auth::create_at_record(agent, did_for_media, MediaRecord::NSID, media_record_value)
-            .await
+        let media_ref = match auth::create_at_record(
+            agent,
+            did_for_media,
+            MediaRecord::NSID,
+            media_record_value,
+        )
+        .await
         {
             Ok(media_resp) => {
                 let media_uri = media_resp.uri.to_string();
                 let media_cid = media_resp.cid.as_ref().to_string();
                 match auth::build_strong_ref(&media_uri, &media_cid) {
-                    Ok(strong_ref) => media_refs.push(strong_ref),
-                    Err(e) => warn!(error = ?e, "Failed to build strong ref for media record"),
+                    Ok(strong_ref) => Some(strong_ref),
+                    Err(e) => {
+                        warn!(error = ?e, "Failed to build strong ref for media record");
+                        None
+                    }
                 }
             }
             Err(e) => {
                 warn!(error = ?e, "Failed to create media record");
+                None
             }
-        }
+        };
+        media_refs.push(media_ref);
     }
 
     Ok((blob_entries, media_refs))
@@ -1033,20 +1066,25 @@ fn existing_media_refs(existing: &serde_json::Value) -> &[serde_json::Value] {
         .unwrap_or_default()
 }
 
-/// The existing media refs an edit keeps, in the record's order. Each ref is
-/// matched to its photo by the media record's URI, which the indexed photos
-/// carry, and kept if that photo's blob CID is in `retained_cids`. A ref with
-/// no indexed photo naming it may be one of the row's photos indexed before
-/// photos carried their URI: it gets its blob CID from `fetch_blob_cid`,
-/// counted only if one of those photos has it. Any other ref (one the
-/// ingester couldn't resolve) is kept: the edit form couldn't show it, so the
-/// user didn't remove it.
-async fn retained_media_refs<F, Fut>(
+/// One of the existing record's media refs, with the blob CID of its photo
+/// when it could be found.
+struct ExistingPhoto {
+    blob_cid: Option<String>,
+    strong_ref: StrongRef,
+}
+
+/// Pair each of the existing record's media refs, in the record's order, with
+/// its photo's blob CID. A ref is matched to its photo by the media record's
+/// URI, which the indexed photos carry. A ref with no indexed photo naming it
+/// may be one of the row's photos indexed before photos carried their URI:
+/// it gets its blob CID from `fetch_blob_cid`, kept only if one of those
+/// photos has it. Otherwise (a ref the ingester couldn't resolve, so a photo
+/// the form didn't show) it's left without one.
+async fn existing_photos<F, Fut>(
     existing_refs: &[serde_json::Value],
     indexed: &[BlobEntry],
-    retained_cids: &[String],
     mut fetch_blob_cid: F,
-) -> Vec<StrongRef>
+) -> Vec<ExistingPhoto>
 where
     F: FnMut(String) -> Fut,
     Fut: std::future::Future<Output = Option<String>>,
@@ -1057,7 +1095,7 @@ where
         .filter(|photo| photo.media_uri.is_none())
         .map(|photo| photo.image.ref_.cid())
         .collect();
-    let mut kept = Vec::with_capacity(existing_refs.len());
+    let mut photos = Vec::with_capacity(existing_refs.len());
     for value in existing_refs {
         let strong_ref = match StrongRef::deserialize(value) {
             Ok(strong_ref) => strong_ref,
@@ -1078,19 +1116,98 @@ where
                 .await
                 .filter(|cid| unnamed.contains(&cid.as_str())),
         };
-        match blob_cid {
-            Some(cid) => {
-                if retained_cids.contains(&cid) {
-                    kept.push(strong_ref);
-                }
-            }
+        if blob_cid.is_none() {
+            warn!(uri, "Keeping a media ref whose photo couldn't be found");
+        }
+        photos.push(ExistingPhoto {
+            blob_cid,
+            strong_ref,
+        });
+    }
+    photos
+}
+
+/// The media refs an edited record lists, in order.
+///
+/// With a `photo_order`, it gives the order and says which existing photos
+/// stay; `new_refs[i]` is the ref for its `New(i)` entries (skipped when that
+/// image's media record wasn't created). Without one, existing photos whose
+/// blob CID is in `retained_cids` stay in the record's order, followed by the
+/// new refs.
+///
+/// An existing ref without a blob CID is always kept: the edit form couldn't
+/// show it, so the user didn't remove it. It keeps its place without a
+/// `photo_order`, and follows every other photo with one, since the user
+/// arranged only the photos they could see.
+fn edited_media_refs(
+    existing: Vec<ExistingPhoto>,
+    mut new_refs: Vec<Option<StrongRef>>,
+    retained_cids: &[String],
+    photo_order: Option<&[PhotoOrderEntry]>,
+) -> Vec<StrongRef> {
+    let Some(order) = photo_order else {
+        return existing
+            .into_iter()
+            .filter(|photo| {
+                photo
+                    .blob_cid
+                    .as_ref()
+                    .is_none_or(|cid| retained_cids.contains(cid))
+            })
+            .map(|photo| photo.strong_ref)
+            .chain(new_refs.into_iter().flatten())
+            .collect();
+    };
+
+    let (mut shown, hidden): (Vec<_>, Vec<_>) = existing
+        .into_iter()
+        .map(|photo| (photo.blob_cid, photo.strong_ref))
+        .partition(|(cid, _)| cid.is_some());
+    let mut refs = Vec::with_capacity(order.len() + hidden.len());
+    for entry in order {
+        let strong_ref = match entry {
+            PhotoOrderEntry::Retained(cid) => shown
+                .iter()
+                .position(|(shown_cid, _)| shown_cid.as_ref() == Some(cid))
+                .map(|i| shown.swap_remove(i).1),
+            PhotoOrderEntry::New(i) => new_refs.get_mut(*i).and_then(Option::take),
+        };
+        refs.extend(strong_ref);
+    }
+    refs.extend(hidden.into_iter().map(|(_, strong_ref)| strong_ref));
+    refs
+}
+
+/// Refuse a `photoOrder` that doesn't place each of the request's
+/// `image_count` new photos exactly once. Checked before anything is
+/// uploaded. A retained blob CID may repeat: the same photo added twice is
+/// two media records with one blob, and each entry keeps one of them.
+fn check_photo_order(order: &[PhotoOrderEntry], image_count: usize) -> Result<(), AppError> {
+    let mut placed = vec![false; image_count];
+    for entry in order {
+        let PhotoOrderEntry::New(i) = entry else {
+            continue;
+        };
+        match placed.get_mut(*i) {
             None => {
-                warn!(uri, "Keeping a media ref whose photo couldn't be found");
-                kept.push(strong_ref);
+                return Err(AppError::BadRequest(format!(
+                    "Photo order names new photo {i}, which isn't in images"
+                )));
             }
+            Some(true) => {
+                return Err(AppError::BadRequest(format!(
+                    "Photo order names new photo {i} more than once"
+                )));
+            }
+            Some(seen) => *seen = true,
         }
     }
-    kept
+    if let Some(missing) = placed.iter().position(|seen| !seen) {
+        return Err(AppError::BadRequest(format!(
+            "Photo order leaves out new photo {missing}"
+        )));
+    }
+    Ok(())
 }
 
 /// Fetch the `bio.lexicons.temp.v0-1.media` record at `uri` and return its
@@ -1824,6 +1941,21 @@ mod tests {
         panic!("unexpected fetch of {uri}");
     }
 
+    /// The refs an edit without a `photoOrder` keeps of the existing ones.
+    async fn kept_by_retained<F, Fut>(
+        refs: &[serde_json::Value],
+        indexed: &[BlobEntry],
+        retained: &[String],
+        fetch: F,
+    ) -> Vec<StrongRef>
+    where
+        F: FnMut(String) -> Fut,
+        Fut: std::future::Future<Output = Option<String>>,
+    {
+        let photos = existing_photos(refs, indexed, fetch).await;
+        edited_media_refs(photos, Vec::new(), retained, None)
+    }
+
     /// The issue's example: one of three refs never resolved, so the row
     /// holds two photos. Keeping both must not cost the record any ref.
     #[tokio::test]
@@ -1835,7 +1967,7 @@ mod tests {
         ];
         let retained = ["blob-a".to_string(), "blob-c".to_string()];
 
-        let kept = retained_media_refs(&refs, &indexed, &retained, |_| async { None }).await;
+        let kept = kept_by_retained(&refs, &indexed, &retained, |_| async { None }).await;
 
         assert_eq!(kept_uris(&kept), [MEDIA_A, MEDIA_B, MEDIA_C]);
     }
@@ -1849,7 +1981,7 @@ mod tests {
         ];
         let retained = ["blob-b".to_string()];
 
-        let kept = retained_media_refs(&refs, &indexed, &retained, no_fetch).await;
+        let kept = kept_by_retained(&refs, &indexed, &retained, no_fetch).await;
 
         assert_eq!(kept_uris(&kept), [MEDIA_B]);
     }
@@ -1866,7 +1998,7 @@ mod tests {
         ];
         let retained = ["blob-a".to_string()];
 
-        let kept = retained_media_refs(&refs, &indexed, &retained, no_fetch).await;
+        let kept = kept_by_retained(&refs, &indexed, &retained, no_fetch).await;
 
         assert_eq!(kept_uris(&kept), [MEDIA_A]);
     }
@@ -1879,7 +2011,7 @@ mod tests {
         let indexed = [indexed_photo("blob-a", None), indexed_photo("blob-b", None)];
         let retained = ["blob-b".to_string()];
 
-        let kept = retained_media_refs(&refs, &indexed, &retained, |uri| async move {
+        let kept = kept_by_retained(&refs, &indexed, &retained, |uri| async move {
             match uri.as_str() {
                 MEDIA_A => Some("blob-a".to_string()),
                 MEDIA_B => Some("blob-b".to_string()),
@@ -1900,12 +2032,174 @@ mod tests {
         let indexed = [indexed_photo("blob-a", Some(MEDIA_A))];
         let retained = ["blob-a".to_string()];
 
-        let kept = retained_media_refs(&refs, &indexed, &retained, |_| async {
+        let kept = kept_by_retained(&refs, &indexed, &retained, |_| async {
             Some("blob-b".to_string())
         })
         .await;
 
         assert_eq!(kept_uris(&kept), [MEDIA_A, MEDIA_B]);
+    }
+
+    const NEW_0: &str = "at://did:plc:alice/bio.lexicons.temp.v0-1.media/n0";
+    const NEW_1: &str = "at://did:plc:alice/bio.lexicons.temp.v0-1.media/n1";
+
+    fn strong_ref(uri: &str) -> StrongRef {
+        auth::build_strong_ref(uri, RECORD_CID).expect("valid strong ref")
+    }
+
+    fn photo(uri: &str, blob_cid: Option<&str>) -> ExistingPhoto {
+        ExistingPhoto {
+            blob_cid: blob_cid.map(str::to_string),
+            strong_ref: strong_ref(uri),
+        }
+    }
+
+    fn retained(cid: &str) -> PhotoOrderEntry {
+        PhotoOrderEntry::Retained(cid.to_string())
+    }
+
+    /// Without a `photoOrder`, an edit keeps today's order: existing photos
+    /// as the record lists them, whatever order `retainedBlobCids` uses, and
+    /// new photos after them.
+    #[test]
+    fn without_an_order_new_photos_follow_the_existing_ones() {
+        let photos = vec![
+            photo(MEDIA_A, Some("blob-a")),
+            photo(MEDIA_B, Some("blob-b")),
+        ];
+        let retained = ["blob-b".to_string(), "blob-a".to_string()];
+
+        let refs = edited_media_refs(photos, vec![Some(strong_ref(NEW_0))], &retained, None);
+
+        assert_eq!(kept_uris(&refs), [MEDIA_A, MEDIA_B, NEW_0]);
+    }
+
+    #[test]
+    fn an_order_moves_existing_photos_and_places_new_ones_among_them() {
+        let photos = vec![
+            photo(MEDIA_A, Some("blob-a")),
+            photo(MEDIA_B, Some("blob-b")),
+        ];
+        let order = [
+            retained("blob-b"),
+            PhotoOrderEntry::New(0),
+            retained("blob-a"),
+        ];
+
+        let refs = edited_media_refs(photos, vec![Some(strong_ref(NEW_0))], &[], Some(&order));
+
+        assert_eq!(kept_uris(&refs), [MEDIA_B, NEW_0, MEDIA_A]);
+    }
+
+    /// The order alone says which existing photos stay.
+    #[test]
+    fn an_order_drops_existing_photos_it_leaves_out() {
+        let photos = vec![
+            photo(MEDIA_A, Some("blob-a")),
+            photo(MEDIA_B, Some("blob-b")),
+        ];
+        let retained_cids = ["blob-a".to_string(), "blob-b".to_string()];
+        let order = [retained("blob-b")];
+
+        let refs = edited_media_refs(photos, Vec::new(), &retained_cids, Some(&order));
+
+        assert_eq!(kept_uris(&refs), [MEDIA_B]);
+    }
+
+    /// Refs observ.ing couldn't show aren't in the order the user arranged, so
+    /// they follow every photo that is.
+    #[test]
+    fn an_order_puts_refs_without_a_photo_last() {
+        let photos = vec![
+            photo(MEDIA_C, None),
+            photo(MEDIA_A, Some("blob-a")),
+            photo(MEDIA_B, Some("blob-b")),
+        ];
+        let order = [retained("blob-b"), retained("blob-a")];
+
+        let refs = edited_media_refs(photos, Vec::new(), &[], Some(&order));
+
+        assert_eq!(kept_uris(&refs), [MEDIA_B, MEDIA_A, MEDIA_C]);
+    }
+
+    /// A new photo whose media record couldn't be created is left out
+    /// without shifting which ref the other `new` entries name.
+    #[test]
+    fn an_order_skips_a_new_photo_that_failed_to_upload() {
+        let photos = vec![photo(MEDIA_A, Some("blob-a"))];
+        let new = vec![None, Some(strong_ref(NEW_1))];
+        let order = [
+            PhotoOrderEntry::New(0),
+            PhotoOrderEntry::New(1),
+            retained("blob-a"),
+        ];
+
+        let refs = edited_media_refs(photos, new, &[], Some(&order));
+
+        assert_eq!(kept_uris(&refs), [NEW_1, MEDIA_A]);
+    }
+
+    #[test]
+    fn photo_order_entries_name_a_retained_cid_or_a_new_image() {
+        let order: Vec<PhotoOrderEntry> =
+            serde_json::from_value(json!([{ "retained": "blob-a" }, { "new": 0 }]))
+                .expect("valid order");
+
+        assert_eq!(order, [retained("blob-a"), PhotoOrderEntry::New(0)]);
+    }
+
+    #[test]
+    fn accepts_an_order_naming_every_new_image_once() {
+        let order = [
+            PhotoOrderEntry::New(1),
+            retained("blob-a"),
+            PhotoOrderEntry::New(0),
+        ];
+        assert!(check_photo_order(&order, 2).is_ok());
+    }
+
+    /// The same photo added twice is two media records with one blob CID, so
+    /// keeping both names that CID twice.
+    #[test]
+    fn an_order_keeps_each_of_two_photos_with_the_same_blob() {
+        let photos = vec![
+            photo(MEDIA_A, Some("blob-a")),
+            photo(MEDIA_B, Some("blob-a")),
+        ];
+        let order = [retained("blob-a"), retained("blob-a")];
+
+        assert!(check_photo_order(&order, 0).is_ok());
+        let refs = edited_media_refs(photos, Vec::new(), &[], Some(&order));
+        assert_eq!(kept_uris(&refs), [MEDIA_A, MEDIA_B]);
+    }
+
+    /// Each of these would upload a photo the record never names, or leave
+    /// it unclear which photo goes where, so it's refused before uploading.
+    #[test]
+    fn rejects_an_order_that_does_not_place_each_photo_once() {
+        let cases: [(&[PhotoOrderEntry], usize, &str); 3] = [
+            (
+                &[PhotoOrderEntry::New(1)],
+                1,
+                "Photo order names new photo 1, which isn't in images",
+            ),
+            (
+                &[PhotoOrderEntry::New(0), PhotoOrderEntry::New(0)],
+                1,
+                "Photo order names new photo 0 more than once",
+            ),
+            (
+                &[PhotoOrderEntry::New(0)],
+                2,
+                "Photo order leaves out new photo 1",
+            ),
+        ];
+        for (order, image_count, expected) in cases {
+            match check_photo_order(order, image_count) {
+                Err(AppError::BadRequest(msg)) => assert_eq!(msg, expected),
+                other => panic!("expected BadRequest for {order:?}, got {other:?}"),
+            }
+        }
     }
 
     /// The media record's blob CID, read from its `image` blob ref.

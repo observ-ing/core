@@ -287,7 +287,8 @@ test.describe("E2E CRUD flow", () => {
       swapRecord: original.data.cid,
     });
 
-    // Move the point and keep the photo, as the edit form does.
+    // Move the point and keep the photo by `retainedBlobCids`, as clients
+    // that send no `photoOrder` (Exact, mobile) do.
     const detail = await page.request.get(`/api/occurrences/${encodeURIComponent(occurrenceUri)}`);
     expect(detail.ok()).toBeTruthy();
     const images = (await detail.json()).occurrence.images as { url: string }[];
