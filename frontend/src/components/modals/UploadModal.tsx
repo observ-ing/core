@@ -165,7 +165,9 @@ function ImageThumbnail({
             src={src}
             alt={`Photo ${position}`}
             draggable={false}
-            sx={coverImageSx}
+            // A long press lands on the tile, not the image: on an image, iOS
+            // Safari opens its own menu instead of starting a drag.
+            sx={[coverImageSx, { pointerEvents: "none" }]}
           />
         </ButtonBase>
       </Box>

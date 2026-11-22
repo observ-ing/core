@@ -267,6 +267,20 @@ test.describe("Observation Edit - Logged In", () => {
         expect(await suppressesMenu(page, 1)).toBe(true);
         await expect(dragHint(page)).toBeVisible();
       });
+
+      // iOS Safari opens its own image menu (Save to Photos, Copy Subject)
+      // for a long press that lands on an <img>, instead of starting a drag.
+      test("a long press on a photo lands on its tile, not the image", async ({
+        authenticatedPage: page,
+      }) => {
+        await editPhotoObservation(page);
+
+        const target = await photo(page, 1).evaluate((el) => {
+          const { left, top, width, height } = el.getBoundingClientRect();
+          return document.elementFromPoint(left + width / 2, top + height / 2)?.tagName;
+        });
+        expect(target).not.toBe("IMG");
+      });
     });
 
     test.describe("in Firefox on an Android phone", () => {
