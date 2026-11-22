@@ -34,6 +34,12 @@ await record(`/api/taxa/Animalia/Gavia`);
 await record(`/api/taxa/Animalia/Gavia/occurrences?limit=${PAGE}`);
 await record(`/api/taxa/search?q=gavia`);
 await record(`/api/feeds/explore?kingdom=Animalia&taxon=${encodeURIComponent('Gavia immer')}&limit=${PAGE}`); // Show in Explore
+await record(`/api/taxa/Gavia%20immer`); // a /taxon/:id link
+await record(`/api/taxa/Gavia%20immer/occurrences?limit=${PAGE}`);
+await record(`/api/taxa/search?q=eriobotrya%20japonica`); // matches a synonym
+await record(`/api/taxa/Animalia/Gaviidae`); // a family, whose tree opens a genus
+await record(`/api/taxa/Animalia/Gaviidae/occurrences?limit=${PAGE}`);
+await record(`/api/taxa/Animalia/Gavia/children`);
 
 await Bun.write(`${import.meta.dir}/fixtures/api.json`, `${JSON.stringify(recorded, null, 1)}\n`);
 console.log(`fixtures/api.json ← ${appview}: ${Object.keys(recorded).length} responses`);

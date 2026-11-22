@@ -172,6 +172,48 @@ test "taxon search finds a genus and lists what it includes"
   expect text "taxon-rank" == "Genus"
   expect tree has "child-0"
 
+test "a taxon search says which synonym it matched"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "open-search"
+  clock settle
+  type "search" "eriobotrya japonica"
+  clock data
+  expect text "found-0-name" == "Rhaphiolepis bibas"
+  expect text "found-0-synonym" == "syn. Eriobotrya japonica"
+
+test "a taxon opens by a /taxon/:id link"
+  at "/taxon/Gavia%20immer"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  clock settle
+  expect text "taxon-title" == "Common Loon"
+  expect text "taxon-sci" == "Gavia immer"
+  expect tree has "ancestor-Gaviidae"
+
+test "a family's tree opens a genus to show its species, and closes it"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "detail-taxon"
+  clock data
+  clock settle
+  tap "ancestor-Gaviidae"
+  clock data
+  clock settle
+  expect text "taxon-title" == "Divers"
+  expect text "child-2-name" == "Loons"
+  expect tree missing "child-9"
+  tap "child-2-toggle"
+  clock data
+  expect text "child-3-name" == "Yellow-billed Loon"
+  expect tree has "child-23"
+  tap "child-2-toggle"
+  clock data
+  expect tree missing "child-9"
+
 // Sign-in starts on /account: Exact's web host finds the drive's auth fixture
 // (?authFixture=, added to the launch URL) in the page's current URL, which a
 // tab switch replaces.
@@ -281,6 +323,9 @@ test "a comment is posted and the field clears"
   clock data
   expect text "comment-0" == "Calling across the bay at dusk."
   expect text "comment-draft" == ""
+  expect text "toast" == "Comment posted."
+  clock +3000
+  expect tree missing "toast"
 
 test "an identification is suggested from search, then withdrawn"
   at "/account"
@@ -347,6 +392,39 @@ test "Agree adds the shown name as yours, until you withdraw it"
   expect tree missing "ident-1"
   expect tree has "agree-id"
 
+test "identifications mark the observer's and the superseded ones"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect text "ident-0-observer" == "Observer’s ID"
+  expect tree missing "ident-0-superseded"
+  tap "suggest-id"
+  clock settle
+  type "identify-search" "gavia"
+  clock data
+  tap "identify-0"
+  clock data
+  clock settle
+  expect text "toast" == "Your identification is saved."
+  expect tree missing "ident-1-superseded"
+  // Agreeing adds a newer one of yours: the earlier one is superseded.
+  tap "agree-id"
+  clock data
+  clock settle
+  expect text "toast" == "Your agreement is saved."
+  expect text "ident-1-superseded" == "Superseded"
+  expect tree missing "ident-2-superseded"
+  expect tree missing "ident-0-superseded"
+
 test "notifications open their observation and can all be marked read"
   at "/account"
   epoch "2026-11-09T23:00:00Z"
@@ -394,6 +472,7 @@ test "your own observation can be deleted after asking"
   clock settle
   expect tree missing "delete-observation"
   expect tree has "toggle-filters"
+  expect text "toast" == "Observation deleted."
 
 test "your own observation can be edited"
   at "/account"
@@ -435,6 +514,7 @@ test "your own observation can be edited"
   clock data
   clock settle
   expect tree missing "edit-save"
+  expect text "toast" == "Changes saved."
   expect text "detail-title" == "Gavia"
   expect text "detail-remarks" == "A loon, seen from the pier."
   expect text "detail-quantity" == "2 (individuals)"

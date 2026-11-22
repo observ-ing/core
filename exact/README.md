@@ -10,11 +10,14 @@ against the same appview.
   dates, data-quality criteria, a taxon from its page's Show in Explore).
 - **Observation**: photos (full size in a sheet), names linking to the taxon,
   data quality, facts, a map (`@exact/maps`: MapKit on Apple, OpenStreetMap
-  tiles on the web), identifications, comments, remarks, links elsewhere.
+  tiles on the web), identifications (oldest first, the observer's marked and
+  each person's earlier ones superseded), comments, remarks, links elsewhere.
 - **Profile**: counts and the person's observations.
 - **Taxon**: picture, names, conservation status, classification, description,
-  what it includes, its observations, pictures, GBIF and Wikidata.
-- **Search**: taxa by name.
+  what it includes as a tree (each taxon opens to show its own), its
+  observations, pictures, GBIF and Wikidata; observ.ing's `/taxon/:id` links
+  (a GBIF id or a name) open it too.
+- **Search**: taxa by name, saying which synonym a result matched.
 - **Signed in**: like and unlike, comment, suggest an identification from a
   taxon search or agree with the one shown (and withdraw your own), delete
   your own observation after a confirmation, a Notifications tab (unread
@@ -55,7 +58,8 @@ against the same appview.
   at the top of Explore on a signed-out first visit (Sign In or Just Browse,
   remembered); an offline banner with Try Again; a profile's Identifications
   beside its Observations; a not-found screen for an observation, profile or
-  taxon the appview doesn't have. Its routes are observ.ing's own
+  taxon the appview doesn't have; a moment's message when a write succeeds
+  (a comment, an identification, a deletion, an edit). Its routes are observ.ing's own
   (`/observation/:did/:rkey`, `/profile/:did`, `/taxon/:kingdom/:name`), so
   observ.ing links open the same screens; on iOS, `applinks:observ.ing` is
   declared, which needs observ.ing to serve an apple-app-site-association
