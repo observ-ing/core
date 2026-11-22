@@ -84,6 +84,9 @@ class ApiError extends Error {
   }
 }
 
+// The appview has no such thing (or the id can't be one): the screen says so instead of offering a retry.
+const isMissing = (e: unknown) => e instanceof ApiError && (e.status === 404 || e.status === 400);
+
 async function get<T>(path: string, store: Store): Promise<T> {
   const response = await fetch(`${API}${path}`, { headers: authHeaders(store), exactTimeout: 15000 });
   if (!response.ok) throw new ApiError(response.status, `${path} answered ${response.status}.`);
@@ -468,17 +471,23 @@ const sources: Sources = {
         images: [], externalRecords: [], createdAt: '', qualityIssues: [] }),
       photos: [], latitude: 0, longitude: 0, hasLocation: false, uncertainty: '', uncertaintyMeters: 0, day: '', time: '',
       endDay: '', observedFrom: 0, observedUntil: 0, quantity: '', quantityType: '', quantityLabel: '', eventRemarks: '', taxonKingdom: '', taxonName: '',
-      issues: [], identifications: [], comments: [], links: [], uri: '', cid: '', liked: false, mine: false,
+      issues: [], identifications: [], comments: [], links: [], uri: '', cid: '', liked: false, mine: false, missing: false,
     };
     if (!did || !rkey) return empty;
     const uri = `at://${did}/bio.lexicons.temp.v0-1.occurrence/${rkey}`;
-    const d = await get<OccurrenceDetailResponse>(`/api/occurrences/${encodeURIComponent(uri)}`, store);
+    let d: OccurrenceDetailResponse;
+    try {
+      d = await get<OccurrenceDetailResponse>(`/api/occurrences/${encodeURIComponent(uri)}`, store);
+    } catch (e) {
+      if (isMissing(e)) return { ...empty, missing: true };
+      throw e;
+    }
     const o = d.occurrence;
     const tax = o.effectiveTaxonomy;
     // A taxon page is addressed by kingdom and name (taxonId is a GBIF URL, not a route).
     const route = tax?.kingdom && tax.scientificName ? { kingdom: tax.kingdom, name: tax.scientificName } : null;
     return {
-      did, rkey, found: true,
+      did, rkey, found: true, missing: false,
       uri: o.uri,
       cid: o.cid,
       liked: !!o.viewerHasLiked,
@@ -516,12 +525,20 @@ const sources: Sources = {
   },
 
   loadProfile: async ([did, wanted], store) => {
-    if (!did) return { did, found: false, name: '', handle: '', avatar: '', observations: 0, identifications: 0, species: 0, items: [], more: false };
+    const none = { did, found: false, missing: false, name: '', handle: '', avatar: '', observations: 0, identifications: 0, species: 0, items: [], more: false };
+    if (!did) return none;
     const path = `/api/profiles/${encodeURIComponent(did)}/feed?type=observations`;
-    const first = await get<ProfileFeedResponse>(`${path}&limit=1`, store);
+    let first: ProfileFeedResponse;
+    try {
+      first = await get<ProfileFeedResponse>(`${path}&limit=1`, store);
+    } catch (e) {
+      // The appview answers any well-formed DID (with nothing in it); a malformed one is a 400.
+      if (isMissing(e)) return { ...none, missing: true };
+      throw e;
+    }
     const { occurrences, more } = await readPages(path, wanted, store);
     return {
-      did, found: true,
+      did, found: true, missing: false,
       name: name(first.profile),
       handle: first.profile.handle ? `@${first.profile.handle}` : '',
       avatar: first.profile.avatar ?? '',
@@ -536,10 +553,16 @@ const sources: Sources = {
   loadTaxon: async ([kingdom, taxonName, wanted], store) => {
     const none = { kingdom, name: taxonName, found: false, scientificName: '', commonName: '', rank: '', photo: '', status: '',
       extinct: false, descriptions: [], references: [], referenceCount: 0, observationCount: 0, descendants: 0, ancestors: [], children: [],
-      media: [], gbifUrl: '', wikidataUrl: '', items: [], more: false };
+      media: [], gbifUrl: '', wikidataUrl: '', items: [], more: false, missing: false };
     if (!kingdom || !taxonName) return none;
     const base = `/api/taxa/${encodeURIComponent(kingdom)}/${encodeURIComponent(taxonName)}`;
-    const t = await get<TaxonDetailWithCount>(base, store);
+    let t: TaxonDetailWithCount;
+    try {
+      t = await get<TaxonDetailWithCount>(base, store);
+    } catch (e) {
+      if (isMissing(e)) return { ...none, missing: true };
+      throw e;
+    }
     const { occurrences, more } = await readPages(`${base}/occurrences`, wanted, store);
     // Its own description first, then the sources' (two at most, each once).
     const texts = [
@@ -548,7 +571,7 @@ const sources: Sources = {
     ].filter((d, i, all) => d.text !== '' && all.findIndex((e) => e.text === d.text) === i).slice(0, 2);
     const references = t.references ?? [];
     return {
-      kingdom, name: taxonName, found: true,
+      kingdom, name: taxonName, found: true, missing: false,
       scientificName: t.scientificName,
       commonName: t.commonName ?? '',
       rank: t.rank,
@@ -813,6 +836,13 @@ const sources: Sources = {
     }
     const created = (await response.json()) as { uri: string };
     pages.clear();
+    // The appview indexes the new record from the firehose: wait (a little) until
+    // it answers for it, so the observation opens showing it, not "not found".
+    const path = `/api/occurrences/${encodeURIComponent(created.uri)}`;
+    for (let i = 0; i < 20; i++) {
+      if (await get(path, store).then(() => true, () => false)) break;
+      await new Promise((r) => setTimeout(r, 500));
+    }
     return { ok: true, error: '', ...parts(created.uri) };
   },
 

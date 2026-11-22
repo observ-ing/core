@@ -125,10 +125,13 @@ shape Detail
   identifications: IdRow[]
   comments: CommentRow[]
   links: LinkRow[]
+  // The appview has no such observation.
+  missing: bool
 
 shape ProfilePage
   did: string
   found: bool
+  missing: bool
   name: string
   handle: string
   avatar: string
@@ -176,6 +179,7 @@ shape TaxonPage
   kingdom: string
   name: string
   found: bool
+  missing: bool
   scientificName: string
   commonName: string
   rank: string
@@ -1099,6 +1103,11 @@ component App
                       openIdentify=openIdentify, canAgree=canAgree, agree=agree, agreeBusy=pending(agreed), agreeError=agreeError, withdrawError=withdrawError, removeError=removeError, edit=openEdit,
                       commentDraft=commentDraft, editComment=editComment, postComment=postComment, commentBusy=pending(commented), commentError=commentError,
                       inatLinked=inat.linked, crosspost=crosspostShown, postToInat=postToInat, crosspostBusy=pending(crossposted), crosspostError=crosspostError)
+                  else if detail.missing and not pending(detail) and detail.did == e.params.did and detail.rkey == e.params.rkey
+                    header display="flex" align-items="center" padding="8px 16px"
+                      text "Observation" role="heading" aria-level=2
+                    NotFound(id=`detail-${e.id}`, title="Observation not found", message="It may have been deleted, or the link you followed is wrong.",
+                      retry=reloadDetail, testPrefix="detail")
                   else
                     header display="flex" align-items="center" padding="8px 16px"
                       text "Observation" role="heading" aria-level=2
@@ -1163,6 +1172,9 @@ component App
                             row justify-content="center"
                               button press=morePerson disabled=pending(person) testId="more-profile"
                                 text (pending(person) ? "Loading…" : "Show More")
+                  else if person.missing and not pending(person) and person.did == e.params.did
+                    NotFound(id=`profile-${e.id}`, title="Profile not found", message="The link you followed may be wrong.",
+                      retry=reloadPerson, testPrefix="profile")
                   else
                     Waiting(id=`profile-${e.id}`, busy=pending(person), error=personError, retry=reloadPerson, testPrefix="profile")
 
@@ -1174,6 +1186,9 @@ component App
                     TaxonDetail(t=taxonPage, now=now, offset=offset, scrollId=`taxon-${e.id}`, busy=pending(taxonPage), more=moreTaxon, openExternal=openExternal, explore=exploreTaxon,
                       commons=(commonsFor == taxonPage.scientificName ? commons : []), commonsAsked=(commonsFor != "" and commonsFor == taxonPage.scientificName),
                       commonsBusy=pending(commons), commonsFailed=(match failure(commons) { case some(f) => true, case none => false }), showCommons=showCommons)
+                  else if taxonPage.missing and not pending(taxonPage) and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name
+                    NotFound(id=`taxon-${e.id}`, title="Taxon not found", message=`observ.ing’s taxonomy has no ${e.params.name} in ${e.params.kingdom}.`,
+                      retry=reloadTaxon, testPrefix="taxon")
                   else
                     Waiting(id=`taxon-${e.id}`, busy=pending(taxonPage), error=taxonError, retry=reloadTaxon, testPrefix="taxon")
 
@@ -1892,6 +1907,22 @@ component Waiting
           text "Try Again"
       else
         progress aria-label="Loading" testId=`${testPrefix}-loading`
+
+// What a screen says when the appview has no such thing. Try Again stays: a link
+// can be right and early, before the appview has indexed what it names.
+component NotFound
+  props
+    id: string
+    title: string
+    message: string
+    retry: action
+    testPrefix: string
+  view
+    column id=id flex=1 justify-content="center" align-items="center" gap=12 padding=24
+      text title role="heading" aria-level=2 font="-exact-headline" text-align="center" testId=`${testPrefix}-not-found`
+      text message color="-exact-secondary-label" text-align="center" max-width="24rem" overflow-wrap="break-word"
+      button press=retry testId=`${testPrefix}-retry`
+        text "Try Again"
 
 // One observation: its photos, names, data quality, facts, map, identifications, comments and links.
 component ObservationDetail

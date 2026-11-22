@@ -17,6 +17,29 @@ test "the feed pushes an observation with its identifications, map and links"
   expect tree has "external-iNaturalist"
   expect tree missing "data-quality"
 
+test "a missing observation says so"
+  at "/observation/did:plc:fixturenobody/3nothere22"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  clock settle
+  expect text "detail-not-found" == "Observation not found"
+  expect tree has "detail-retry"
+  expect tree missing "detail-loading"
+
+test "a missing profile says so"
+  at "/profile/did:plc:fixturenobody"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  clock settle
+  expect text "profile-not-found" == "Profile not found"
+
+test "a missing taxon says so"
+  at "/taxon/Animalia/Nonexistus"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  clock settle
+  expect text "taxon-not-found" == "Taxon not found"
+
 test "an unidentified observation shows what it lacks"
   epoch "2026-11-09T23:00:00Z"
   clock data

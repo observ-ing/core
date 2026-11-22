@@ -54,7 +54,8 @@ against the same appview.
 - **Polish**: observ.ing's green as the accent (`app.forma`); a welcome card
   at the top of Explore on a signed-out first visit (Sign In or Just Browse,
   remembered); an offline banner with Try Again; a profile's Identifications
-  beside its Observations. Its routes are observ.ing's own
+  beside its Observations; a not-found screen for an observation, profile or
+  taxon the appview doesn't have. Its routes are observ.ing's own
   (`/observation/:did/:rkey`, `/profile/:did`, `/taxon/:kingdom/:name`), so
   observ.ing links open the same screens; on iOS, `applinks:observ.ing` is
   declared, which needs observ.ing to serve an apple-app-site-association
