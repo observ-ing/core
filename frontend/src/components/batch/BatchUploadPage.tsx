@@ -20,7 +20,6 @@ import {
   alpha,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   LinearProgress,
   Link as MuiLink,
@@ -76,6 +75,7 @@ import { BatchCard, KEEPS_SELECTION, type CardDropState } from "./BatchCard";
 import { useMarqueeSelection } from "./useMarqueeSelection";
 import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
+import { ConvertingStatus } from "./ConvertingStatus";
 import { PhoneBatch } from "./phone/PhoneBatch";
 import { PhoneLocationStep } from "./phone/PhoneLocationStep";
 import { pageTitleSx, panelTitleSx, touchTarget } from "../common/layoutSx";
@@ -811,15 +811,7 @@ export function BatchUploadPage() {
                   ? `${uploadedCount} of ${total} uploaded`
                   : `${plural(observations.length, "observation")}, ${plural(photoCount, "photo")}`}
               </Typography>
-              {converting > 0 && (
-                <Typography
-                  role="status"
-                  sx={{ display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}
-                >
-                  <CircularProgress size={16} color="inherit" />
-                  Converting {plural(converting, "HEIC photo")}…
-                </Typography>
-              )}
+              <ConvertingStatus count={converting} />
               {failedCount > 0 && (
                 <Typography
                   sx={{

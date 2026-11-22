@@ -1,11 +1,11 @@
 // Phone layout, before any photos: what the tool does and the way in.
-import { Alert, AlertTitle, Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Alert, AlertTitle, Box, Button, Typography } from "@mui/material";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import { heroIconSx, pageTitleSx } from "../../common/layoutSx";
 import { MAX_BATCH_PHOTOS } from "../../../lib/batchUpload";
 import { formatMegabytes } from "../../../lib/imageSelection";
 import { useMaxPhotoSize } from "../../../lib/query/hooks";
-import { plural } from "../../../lib/utils";
+import { ConvertingStatus } from "../ConvertingStatus";
 
 export interface PhoneStartProps {
   onChoosePhotos: () => void;
@@ -63,15 +63,7 @@ export function PhoneStart({ onChoosePhotos, converting, stripsLocation }: Phone
           {maxPhotoSize.limitedByPds && " (set by your PDS)"}, up to {MAX_BATCH_PHOTOS} photos per
           batch.
         </Typography>
-        {converting > 0 && (
-          <Typography
-            role="status"
-            sx={{ display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}
-          >
-            <CircularProgress size={16} color="inherit" />
-            Converting {plural(converting, "HEIC photo")}…
-          </Typography>
-        )}
+        <ConvertingStatus count={converting} />
       </Box>
       {stripsLocation && (
         <Alert severity="warning" variant="outlined">
