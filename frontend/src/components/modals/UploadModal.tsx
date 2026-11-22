@@ -11,6 +11,7 @@ import {
   useRef,
   type FormEvent,
   type ChangeEvent,
+  type DragEvent,
 } from "react";
 import {
   Box,
@@ -39,6 +40,7 @@ import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice
 import { trackSubmission } from "../../store/pendingSlice";
 import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
 import { useToast } from "../../hooks/useToast";
+import { useBatchLayout } from "../../hooks/useBatchLayout";
 import {
   useUserPreferences,
   useCrosspostStatus,
@@ -84,10 +86,12 @@ const LocationPicker = lazy(() =>
   import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
 );
 
-interface ImagePreview {
-  file: File;
-  preview: string;
-}
+/** A photo in the form: one already on the observation being edited, or one added here. */
+type FormPhoto =
+  | { kind: "existing"; key: string; url: string }
+  | { kind: "new"; key: string; file: File; preview: string };
+
+const photoSrc = (photo: FormPhoto) => (photo.kind === "existing" ? photo.url : photo.preview);
 
 function toDatetimeLocal(date: Date): string {
   const pad = (n: number) => n.toString().padStart(2, "0");
@@ -96,35 +100,94 @@ function toDatetimeLocal(date: Date): string {
 
 interface ImageThumbnailProps {
   src: string;
-  alt: string;
+  /** 1-based position among the form's photos. */
+  position: number;
+  /** The primary pointer is a finger, so a long press starts a drag. */
+  touch: boolean;
+  /** Faded while it is the photo being dragged. */
+  lifted: boolean;
+  /** Which side, if any, shows the bar marking where a dragged photo would land. */
+  insertionBar: "left" | "right" | null;
   onEnlarge: () => void;
   onRemove: () => void;
+  onDragStart: (event: DragEvent<HTMLElement>) => void;
+  onDragEnd: () => void;
+  onDragOver: (event: DragEvent<HTMLElement>) => void;
 }
 
-function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) {
+function ImageThumbnail({
+  src,
+  position,
+  touch,
+  lifted,
+  insertionBar,
+  onEnlarge,
+  onRemove,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+}: ImageThumbnailProps) {
   const theme = useTheme();
   return (
     <Box
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      // On touch a long press starts a drag, so the system's menu for the photo
+      // stays out of the way.
+      onContextMenu={touch ? (event) => event.preventDefault() : undefined}
       sx={{
+        ...(touch && { userSelect: "none", WebkitTouchCallout: "none" }),
         position: "relative",
         width: 80,
         height: 80,
-        ...thumbnailFrameSx,
-        border: 1,
-        borderColor: "divider",
+        cursor: "grab",
+        opacity: lifted ? 0.35 : 1,
       }}
     >
-      <ButtonBase
-        onClick={onEnlarge}
-        aria-label="Enlarge photo"
-        sx={{ display: "block", width: "100%", height: "100%", cursor: "zoom-in" }}
+      <Box
+        sx={{
+          width: "100%",
+          height: "100%",
+          ...thumbnailFrameSx,
+          border: 1,
+          borderColor: "divider",
+        }}
       >
-        <Box component="img" src={src} alt={alt} sx={coverImageSx} />
-      </ButtonBase>
+        <ButtonBase
+          onClick={onEnlarge}
+          aria-label={`Enlarge photo ${position}`}
+          sx={{ display: "block", width: "100%", height: "100%", cursor: "zoom-in" }}
+        >
+          <Box
+            component="img"
+            src={src}
+            alt={`Photo ${position}`}
+            draggable={false}
+            sx={coverImageSx}
+          />
+        </ButtonBase>
+      </Box>
+      {insertionBar && (
+        <Box
+          aria-hidden
+          data-testid="photo-insertion-bar"
+          sx={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            [insertionBar]: -6,
+            width: 4,
+            borderRadius: 0.5,
+            bgcolor: "primary.main",
+          }}
+        />
+      )}
       <IconButton
         size="small"
         onClick={onRemove}
-        aria-label="Remove image"
+        aria-label={`Remove photo ${position}`}
         sx={[
           cornerPinSx("top-right", { size: "xs" }),
           {
@@ -165,6 +228,7 @@ export function UploadModal() {
   const defaultLicense = prefs?.defaultLicense ?? null;
   const inatLogin = useInatAccount().data?.login;
   const maxPhotoSize = useMaxPhotoSize();
+  const { touch, touchDrag } = useBatchLayout();
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
   const currentUser = useAppSelector((state) => state.auth.user);
 
@@ -187,8 +251,11 @@ export function UploadModal() {
   const [crosspostChoice, setCrosspostChoice] = useState<boolean | null>(null);
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
-  const [images, setImages] = useState<ImagePreview[]>([]);
-  const [existingImages, setExistingImages] = useState<string[]>([]);
+  // Every photo the observation will have, in order.
+  const [photos, setPhotos] = useState<FormPhoto[]>([]);
+  // The key of the photo being dragged, and the slot it would land in.
+  const [draggingPhoto, setDraggingPhoto] = useState<string | null>(null);
+  const [insertion, setInsertion] = useState<number | null>(null);
   const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
   const [observationEndDate, setObservationEndDate] = useState("");
   /** UTC offset `observationDate` is in; `null` means the browser's own zone. */
@@ -212,8 +279,8 @@ export function UploadModal() {
   const formGenerationRef = useRef(0);
 
   useEffect(() => {
-    imageCountRef.current = images.length;
-  }, [images.length]);
+    imageCountRef.current = photos.length;
+  }, [photos.length]);
 
   const hasLocation = !!lat && !!lng;
 
@@ -272,7 +339,15 @@ export function UploadModal() {
         setUncertaintyMeters(editingObservation.location.uncertaintyMeters);
       }
     }
-    setExistingImages((editingObservation.images || []).map((img) => img.url));
+    // Keyed by position too: the same photo added twice is two images with one
+    // URL. Photos added here stay if this runs again while the form is open,
+    // such as when the preferences finish loading.
+    const existingPhotos = (editingObservation.images || []).map((img, index): FormPhoto => ({
+      kind: "existing",
+      key: `existing-${index}-${img.url}`,
+      url: img.url,
+    }));
+    setPhotos((prev) => [...existingPhotos, ...prev.filter((photo) => photo.kind === "new")]);
     if (editingObservation.organismQuantity) {
       setOrganismQuantity(editingObservation.organismQuantity);
       setOrganismQuantityType(
@@ -307,9 +382,10 @@ export function UploadModal() {
     setRank("");
     setLicense(isEditMode ? DEFAULT_LICENSE : (defaultLicense ?? DEFAULT_LICENSE));
     setCrosspostChoice(null);
-    images.forEach((img) => URL.revokeObjectURL(img.preview));
-    setImages([]);
-    setExistingImages([]);
+    photos.forEach((photo) => {
+      if (photo.kind === "new") URL.revokeObjectURL(photo.preview);
+    });
+    setPhotos([]);
     setObservationDate(toDatetimeLocal(new Date()));
     setObservationEndDate("");
     setUtcOffset(null);
@@ -376,8 +452,11 @@ export function UploadModal() {
     if (accepted.length === 0) return;
 
     const isFirstPhoto = currentCount === 0;
-    const additions = accepted.map((file) => ({ file, preview: URL.createObjectURL(file) }));
-    setImages((prev) => [...prev, ...additions]);
+    const additions = accepted.map((file) => {
+      const preview = URL.createObjectURL(file);
+      return { kind: "new" as const, key: `new-${preview}`, file, preview };
+    });
+    setPhotos((prev) => [...prev, ...additions]);
     setIsDirty(true);
 
     // Only the observation's very first photo seeds the date/location and the
@@ -392,7 +471,7 @@ export function UploadModal() {
   };
 
   const handlePickImages = async () => {
-    if (images.length >= MAX_IMAGES) {
+    if (photos.length >= MAX_IMAGES) {
       toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
       return;
     }
@@ -419,18 +498,56 @@ export function UploadModal() {
     }
   };
 
-  const handleRemoveImage = (index: number) => {
-    setImages((prev) => {
-      const removed = prev[index];
-      if (removed) URL.revokeObjectURL(removed.preview);
-      return prev.filter((_, i) => i !== index);
+  const handleRemovePhoto = (key: string) => {
+    setPhotos((prev) => {
+      const removed = prev.find((photo) => photo.key === key);
+      if (removed?.kind === "new") URL.revokeObjectURL(removed.preview);
+      return prev.filter((photo) => photo.key !== key);
     });
     setIsDirty(true);
   };
 
-  const handleRemoveExistingImage = (index: number) => {
-    setExistingImages((prev) => prev.filter((_, i) => i !== index));
-    setIsDirty(true);
+  const endPhotoDrag = () => {
+    // Deferred so it lands after the dragstart timer that sets `draggingPhoto`:
+    // a drag cancelled at once ends before that timer fires.
+    setTimeout(() => {
+      setDraggingPhoto(null);
+      setInsertion(null);
+    }, 0);
+  };
+
+  const handlePhotoDragStart = (event: DragEvent<HTMLElement>, key: string) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", key);
+    // Deferred: re-rendering the source during dragstart can cancel the drag.
+    setTimeout(() => setDraggingPhoto(key), 0);
+  };
+
+  // Insert before a photo when over its left half, after it when over its right.
+  const handlePhotoDragOver = (event: DragEvent<HTMLElement>, index: number) => {
+    if (!draggingPhoto) return;
+    event.preventDefault();
+    const { left, width } = event.currentTarget.getBoundingClientRect();
+    setInsertion(event.clientX < left + width / 2 ? index : index + 1);
+  };
+
+  const handlePhotoDrop = (event: DragEvent) => {
+    event.preventDefault();
+    const from = photos.findIndex((photo) => photo.key === draggingPhoto);
+    if (insertion !== null && from !== -1) {
+      // The slot counts the dragged photo, which is about to move.
+      const to = insertion > from ? insertion - 1 : insertion;
+      if (to !== from) {
+        setPhotos((prev) => {
+          const next = [...prev];
+          const [moved] = next.splice(from, 1);
+          if (moved) next.splice(to, 0, moved);
+          return next;
+        });
+        setIsDirty(true);
+      }
+    }
+    endPhotoDrag();
   };
 
   const handleUploadClick = () => {
@@ -463,10 +580,11 @@ export function UploadModal() {
       return;
     }
 
+    const newPhotos = photos.filter((photo) => photo.kind === "new");
     const imageData = await Promise.all(
-      images.map(async (img) => ({
-        data: await fileToBase64(img.file),
-        mimeType: img.file.type,
+      newPhotos.map(async (photo) => ({
+        data: await fileToBase64(photo.file),
+        mimeType: photo.file.type,
       })),
     );
 
@@ -543,9 +661,19 @@ export function UploadModal() {
     };
 
     if (isEditMode && editingObservation) {
-      const retainedBlobCids = existingImages.map((url) => url.split("/").at(-1) ?? "");
+      const photoOrder = photos.map((photo) =>
+        photo.kind === "existing"
+          ? { retained: photo.url.split("/").at(-1) ?? "" }
+          : { new: newPhotos.indexOf(photo) },
+      );
+      // A server that predates `photoOrder` ignores it and reads a missing
+      // `retainedBlobCids` as keeping no photos, so send both; one that knows
+      // `photoOrder` ignores `retainedBlobCids`.
+      const retainedBlobCids = photoOrder.flatMap((entry) =>
+        "retained" in entry ? [entry.retained] : [],
+      );
       updateObs.mutate(
-        { uri: editingObservation.uri, ...commonPayload, retainedBlobCids },
+        { uri: editingObservation.uri, ...commonPayload, photoOrder, retainedBlobCids },
         { onSuccess, onError },
       );
     } else {
@@ -564,7 +692,7 @@ export function UploadModal() {
 
   // Short summary shown under each step's title once it's been filled in, so the
   // collapsed steps still convey what was entered.
-  const photoCount = existingImages.length + images.length;
+  const photoCount = photos.length;
 
   // Only for a new observation: an existing one is posted from its details.
   const offerCrosspost = !isEditMode && !!inatLogin;
@@ -629,28 +757,54 @@ export function UploadModal() {
               </StepButton>
               <StepContent>
                 {photoCount > 0 && (
-                  <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}>
-                    {existingImages.map((url, index) => (
-                      <ImageThumbnail
-                        key={`existing-${index}`}
-                        src={url}
-                        alt={`Existing ${index + 1}`}
-                        onEnlarge={() => setLightbox({ src: url, alt: `Existing ${index + 1}` })}
-                        onRemove={() => handleRemoveExistingImage(index)}
-                      />
-                    ))}
-                    {images.map((img, index) => (
-                      <ImageThumbnail
-                        key={`new-${index}`}
-                        src={img.preview}
-                        alt={`Preview ${index + 1}`}
-                        onEnlarge={() =>
-                          setLightbox({ src: img.preview, alt: `Preview ${index + 1}` })
-                        }
-                        onRemove={() => handleRemoveImage(index)}
-                      />
-                    ))}
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    onDragOver={(event) => {
+                      // Between photos the pointer is over the row but no photo; keep the bar.
+                      if (draggingPhoto) event.preventDefault();
+                    }}
+                    onDrop={handlePhotoDrop}
+                    sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}
+                  >
+                    {photos.map((photo, index) => {
+                      const src = photoSrc(photo);
+                      const position = index + 1;
+                      const showsBar = draggingPhoto !== null;
+                      return (
+                        <ImageThumbnail
+                          key={photo.key}
+                          src={src}
+                          position={position}
+                          touch={touch}
+                          lifted={draggingPhoto === photo.key}
+                          insertionBar={
+                            showsBar && insertion === index
+                              ? "left"
+                              : showsBar &&
+                                  insertion === photos.length &&
+                                  index === photos.length - 1
+                                ? "right"
+                                : null
+                          }
+                          onEnlarge={() => setLightbox({ src, alt: `Photo ${position}` })}
+                          onRemove={() => handleRemovePhoto(photo.key)}
+                          onDragStart={(event) => handlePhotoDragStart(event, photo.key)}
+                          onDragEnd={endPhotoDrag}
+                          onDragOver={(event) => handlePhotoDragOver(event, index)}
+                        />
+                      );
+                    })}
                   </Stack>
+                )}
+                {/* Not where a long press can't start a drag (Firefox on Android). */}
+                {photoCount > 1 && (!touch || touchDrag) && (
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", display: "block", mb: 1 }}
+                  >
+                    Drag photos to reorder them. The first is the cover.
+                  </Typography>
                 )}
 
                 {photoCount < MAX_IMAGES && (
@@ -668,7 +822,7 @@ export function UploadModal() {
                   >
                     {isConvertingPhotos
                       ? "Converting photos…"
-                      : images.length === 0
+                      : photoCount === 0
                         ? "Add photos"
                         : "Add more photos"}
                   </Button>
