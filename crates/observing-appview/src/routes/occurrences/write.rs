@@ -1036,10 +1036,11 @@ fn existing_media_refs(existing: &serde_json::Value) -> &[serde_json::Value] {
 /// The existing media refs an edit keeps, in the record's order. Each ref is
 /// matched to its photo by the media record's URI, which the indexed photos
 /// carry, and kept if that photo's blob CID is in `retained_cids`. A ref with
-/// no indexed photo naming it (a row indexed before photos carried their URI,
-/// or a ref the ingester couldn't resolve) gets its blob CID from
-/// `fetch_blob_cid`. A ref whose blob CID still can't be found is kept: the
-/// edit form couldn't show it, so the user didn't remove it.
+/// no indexed photo naming it may be one of the row's photos indexed before
+/// photos carried their URI: it gets its blob CID from `fetch_blob_cid`,
+/// counted only if one of those photos has it. Any other ref (one the
+/// ingester couldn't resolve) is kept: the edit form couldn't show it, so the
+/// user didn't remove it.
 async fn retained_media_refs<F, Fut>(
     existing_refs: &[serde_json::Value],
     indexed: &[BlobEntry],
@@ -1050,6 +1051,12 @@ where
     F: FnMut(String) -> Fut,
     Fut: std::future::Future<Output = Option<String>>,
 {
+    // Blob CIDs of the photos indexed without their media record's URI.
+    let unnamed: Vec<&str> = indexed
+        .iter()
+        .filter(|photo| photo.media_uri.is_none())
+        .map(|photo| photo.image.ref_.cid())
+        .collect();
     let mut kept = Vec::with_capacity(existing_refs.len());
     for value in existing_refs {
         let strong_ref = match StrongRef::deserialize(value) {
@@ -1066,7 +1073,10 @@ where
             .map(|photo| photo.image.ref_.cid().to_string());
         let blob_cid = match indexed_cid {
             Some(cid) => Some(cid),
-            None => fetch_blob_cid(uri.to_string()).await,
+            None if unnamed.is_empty() => None,
+            None => fetch_blob_cid(uri.to_string())
+                .await
+                .filter(|cid| unnamed.contains(&cid.as_str())),
         };
         match blob_cid {
             Some(cid) => {
@@ -1879,6 +1889,23 @@ mod tests {
         .await;
 
         assert_eq!(kept_uris(&kept), [MEDIA_B]);
+    }
+
+    /// A ref the ingester couldn't resolve has no photo in the row, so the
+    /// form didn't show it. Its media record being fetchable now doesn't make
+    /// leaving it out of the retained list a removal.
+    #[tokio::test]
+    async fn an_edit_keeps_a_ref_that_never_resolved_even_if_it_can_be_fetched_now() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B)];
+        let indexed = [indexed_photo("blob-a", Some(MEDIA_A))];
+        let retained = ["blob-a".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, |_| async {
+            Some("blob-b".to_string())
+        })
+        .await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_A, MEDIA_B]);
     }
 
     /// The media record's blob CID, read from its `image` blob ref.
