@@ -4,10 +4,15 @@ import { IconButtonSkeleton } from "../common/IconButtonSkeleton";
 import { SectionCardSkeleton } from "../common/SectionCardSkeleton";
 import { UserCardSkeleton } from "../common/UserCardSkeleton";
 import {
+  OBSERVATION_CONTENT_SX,
+  OBSERVATION_HEADER_DIVIDER_SX,
+  OBSERVATION_OBSERVER_ROW_SX,
   OBSERVATION_PHOTO_LICENSE_SX,
   OBSERVATION_PHOTO_MAX_HEIGHT,
   OBSERVATION_PHOTO_RADIUS,
   OBSERVATION_PHOTO_STAGE_SX,
+  OBSERVATION_SECTION_SPACING,
+  OBSERVATION_SPECIES_HEADER_SX,
 } from "./observationLayout";
 
 // Placeholder heights for the section cards below the image, sized to the
@@ -27,15 +32,15 @@ export function ObservationDetailSkeleton() {
       />
 
       {/* Species header */}
-      <Box sx={{ px: 3, pt: 2, pb: 1.5 }}>
+      <Box sx={OBSERVATION_SPECIES_HEADER_SX}>
         <Skeleton variant="text" width="40%" height={24} />
         <Skeleton variant="text" width="25%" height={24} />
       </Box>
 
-      <Divider sx={{ mx: 3 }} />
+      <Divider sx={OBSERVATION_HEADER_DIVIDER_SX} />
 
       {/* Observer (name, handle, observed date) with like control */}
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center", px: 3, pt: 1.5, pb: 1.5 }}>
+      <Stack direction="row" spacing={1} sx={OBSERVATION_OBSERVER_ROW_SX}>
         <UserCardSkeleton
           avatarSize={44}
           nameWidth={120}
@@ -61,17 +66,12 @@ export function ObservationDetailSkeleton() {
       </Box>
 
       {/* Content: uniform section cards */}
-      <Box
-        sx={{
-          p: { xs: 2, sm: 3 },
-          display: "flex",
-          flexDirection: "column",
-          gap: 2.5,
-        }}
-      >
-        {SECTION_CARD_HEIGHTS.map((height) => (
-          <SectionCardSkeleton key={height} height={height} />
-        ))}
+      <Box sx={OBSERVATION_CONTENT_SX}>
+        <Stack spacing={OBSERVATION_SECTION_SPACING}>
+          {SECTION_CARD_HEIGHTS.map((height) => (
+            <SectionCardSkeleton key={height} height={height} />
+          ))}
+        </Stack>
       </Box>
     </Box>
   );
