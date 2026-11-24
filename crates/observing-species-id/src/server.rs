@@ -1,7 +1,10 @@
 //! HTTP server for species identification service
 
+use crate::detector::OrganismDetector;
 use crate::model::BioclipModel;
-use crate::types::{HealthResponse, IdentifyRequest, IdentifyResponse};
+use crate::types::{
+    DetectRequest, DetectResponse, HealthResponse, IdentifyRequest, IdentifyResponse,
+};
 use axum::{
     extract::{DefaultBodyLimit, State},
     http::StatusCode,
@@ -18,6 +21,9 @@ use tracing::{error, info};
 /// Shared state for the HTTP server
 pub struct ServerState {
     pub model: BioclipModel,
+    /// Organism detector for the prototype `/detect` endpoint; `None` when
+    /// its model files aren't present.
+    pub detector: Option<OrganismDetector>,
     pub started_at: DateTime<Utc>,
 }
 
@@ -33,6 +39,7 @@ pub fn create_router(state: SharedState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/identify", post(identify))
+        .route("/detect", post(detect))
         .layer(DefaultBodyLimit::max(20 * 1024 * 1024)) // 20MB for base64-encoded images
         .layer(CorsLayer::permissive())
         .with_state(state)
@@ -105,6 +112,97 @@ async fn identify(State(state): State<SharedState>, Json(body): Json<IdentifyReq
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
                     error: "Species identification failed".to_string(),
+                }),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            error!(error = %e, "Blocking task panicked");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Internal error".to_string(),
+                }),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Organism detection endpoint (prototype): boxes around the living things
+/// in a photo, for the user to pick one to identify. Independent of
+/// `/identify`.
+async fn detect(State(state): State<SharedState>, Json(body): Json<DetectRequest>) -> Response {
+    let start = std::time::Instant::now();
+
+    let Some(version) = state.detector.as_ref().map(|d| d.version.clone()) else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ErrorResponse {
+                error: "Organism detector is not loaded".to_string(),
+            }),
+        )
+            .into_response();
+    };
+
+    let image_bytes =
+        match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &body.image) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        error: format!("Invalid base64 image data: {}", e),
+                    }),
+                )
+                    .into_response();
+            }
+        };
+
+    let min_score = if body.min_score.is_finite() {
+        body.min_score.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let limit = body.limit.min(50);
+    let state_for_task = state.clone();
+    let result = tokio::task::spawn_blocking(move || {
+        state_for_task
+            .detector
+            .as_ref()
+            .expect("checked above")
+            .detect(&image_bytes, min_score, limit)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(detections)) => {
+            let elapsed = start.elapsed();
+            info!(
+                detections = detections.len(),
+                inference_ms = elapsed.as_millis(),
+                "Organism detection complete"
+            );
+            Json(DetectResponse {
+                detections,
+                model_version: version,
+                inference_time_ms: elapsed.as_millis() as u64,
+            })
+            .into_response()
+        }
+        Ok(Err(crate::error::SpeciesIdError::Image(e))) => (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("Invalid image: {}", e),
+            }),
+        )
+            .into_response(),
+        Ok(Err(e)) => {
+            error!(error = %e, "Organism detection failed");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Organism detection failed".to_string(),
                 }),
             )
                 .into_response()

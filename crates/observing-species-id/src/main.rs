@@ -2,6 +2,7 @@
 //!
 //! BioCLIP-based species identification from photos using ONNX Runtime.
 
+mod detector;
 mod embeddings;
 mod error;
 mod model;
@@ -9,6 +10,7 @@ mod preprocessing;
 mod server;
 mod types;
 
+use crate::detector::OrganismDetector;
 use crate::error::{Result, SpeciesIdError};
 use crate::model::BioclipModel;
 use crate::server::{start_server, ServerState, SharedState};
@@ -50,8 +52,24 @@ async fn main() -> Result<()> {
         "Model loaded successfully"
     );
 
+    // Prototype organism detector for `/detect`. Optional: without its files
+    // the service runs as before and `/detect` answers 503.
+    let detector_dir = std::env::var("DETECTOR_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("models/detector"));
+    let detector = if detector_dir.join("detector.onnx").exists() {
+        Some(OrganismDetector::load(&detector_dir)?)
+    } else {
+        info!(
+            dir = %detector_dir.display(),
+            "Organism detector not found; /detect is disabled"
+        );
+        None
+    };
+
     let state: SharedState = Arc::new(ServerState {
         model,
+        detector,
         started_at: chrono::Utc::now(),
     });
 
