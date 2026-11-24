@@ -30,12 +30,31 @@ jobs:
         with:
           node-version: '26'
           cache: 'npm'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
       - run: npm ci
+      # Regenerates every ts-rs type (`npm run bindings` without the copy into
+      # exact/), then fails on any change, new files included, and on an
+      # exact/bindings copy that doesn't match. exact-test checks the copy too,
+      # but it isn't a required check, so only this one blocks the merge.
       - name: Check generated TypeScript bindings
         run: |
-          cargo test -p observing-appview -- export_bindings
+          cargo test -p observing-appview -p observing-species-id-protocol -- export_bindings
           npx oxfmt frontend/src/bindings
-          git diff --exit-code frontend/src/bindings/
+          changes=$(git status --porcelain -- frontend/src/bindings)
+          if [ -n "$changes" ]; then
+            echo "$changes"
+            echo "::error::frontend/src/bindings is out of date: run npm run bindings and commit the result"
+            exit 1
+          fi
+      - name: Check the Exact app's copy of the bindings
+        run: |
+          bun sync.ts --check || {
+            echo "::error::exact/ is out of date: run npm run bindings and commit the result"
+            exit 1
+          }
+        working-directory: exact
 
   fmt:
     runs-on: ubuntu-latest
