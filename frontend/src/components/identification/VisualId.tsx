@@ -29,7 +29,7 @@ export function VisualId({
   autoFetch,
   quiet,
 }: VisualIdProps) {
-  const { suggestions, isLoading, hasLoaded, handleFetch, readyAt } = useVisualId({
+  const { suggestions, fallback, isLoading, hasLoaded, handleFetch, readyAt } = useVisualId({
     imageUrl,
     latitude,
     longitude,
@@ -56,6 +56,7 @@ export function VisualId({
       {isLoading && (autoFetch || readyAt !== null) && <SpeciesIdProgress readyAt={readyAt} />}
       <VisualIdCards
         suggestions={suggestions}
+        fallback={fallback}
         onSelectSpecies={onSelect}
         onSelectAncestor={onSelectAncestor}
       />

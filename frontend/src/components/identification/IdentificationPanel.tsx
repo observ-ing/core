@@ -230,6 +230,7 @@ export function IdentificationPanel({
                   ) : (
                     <VisualIdCards
                       suggestions={visualId.suggestions}
+                      fallback={visualId.fallback}
                       onSelectSpecies={(s) => {
                         setTaxonName(s.scientificName);
                         if (s.taxonMatch) {
@@ -243,9 +244,15 @@ export function IdentificationPanel({
                       }}
                       onSelectAncestor={(ancestor) => {
                         setTaxonName(ancestor.name);
-                        setMatchedTaxon(null);
-                        if (ancestor.kingdom) setKingdom(ancestor.kingdom);
-                        setRank(ancestor.rank);
+                        if (ancestor.match) {
+                          setMatchedTaxon(ancestor.match);
+                          setKingdom(ancestor.match.kingdom ?? "");
+                          setRank("");
+                        } else {
+                          setMatchedTaxon(null);
+                          if (ancestor.kingdom) setKingdom(ancestor.kingdom);
+                          setRank(ancestor.rank);
+                        }
                       }}
                     />
                   )

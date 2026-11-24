@@ -93,6 +93,35 @@ export const AutoFetched: Story = {
   },
 };
 
+/**
+ * The oaks score too close for any one species to be confident, so the
+ * server falls back to the genus and the cards lead with *Quercus*.
+ */
+export const AutoFetchedWithFallback: Story = {
+  args: { autoFetch: true },
+  parameters: {
+    msw: {
+      handlers: [
+        http.post("/api/species-id", () =>
+          HttpResponse.json({
+            suggestions: SUGGESTIONS.map((s) => ({ ...s, confidence: 0.28 })),
+            fallback: {
+              rank: "genus",
+              scientificName: "Quercus",
+              confidence: 0.81,
+              kingdom: "Plantae",
+              family: "Fagaceae",
+              commonName: "Oaks",
+            },
+            modelVersion: "story",
+            inferenceTimeMs: 120,
+          } satisfies IdentifyResponse),
+        ),
+      ],
+    },
+  },
+};
+
 export const AutoFetchLoading: Story = {
   args: { autoFetch: true },
   parameters: {
