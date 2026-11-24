@@ -7,7 +7,17 @@
 
 use serde::Serialize;
 
-pub use observing_species_id_protocol::{IdentifyRequest, IdentifyResponse, SpeciesSuggestion};
+pub use observing_species_id_protocol::{
+    IdentifyRequest, IdentifyResponse, RankFallback, SpeciesSuggestion,
+};
+
+/// What [`crate::model::BioclipModel::identify`] found in a photo.
+#[derive(Debug, Clone)]
+pub struct Identification {
+    pub suggestions: Vec<SpeciesSuggestion>,
+    /// A broader taxon, when no species is confident but one is.
+    pub fallback: Option<RankFallback>,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct HealthResponse {
