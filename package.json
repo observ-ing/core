@@ -12,6 +12,7 @@
     "db:up": "./scripts/db-up.sh",
     "doctor": "./scripts/doctor.sh",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
+    "bindings": "cargo test -p observing-appview -p observing-species-id-protocol -- export_bindings && oxfmt frontend/src/bindings && cd exact && bun sync.ts",
     "setup": "./scripts/setup.sh",
     "dev": "vite -c frontend/vite.config.ts",
     "dev:stack": "./scripts/dev.sh",

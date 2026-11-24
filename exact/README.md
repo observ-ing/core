@@ -91,7 +91,9 @@ Files:
   in by `bun sync.ts` (an Exact build reads only files inside this directory):
   the appview's ts-rs types from `frontend/src/bindings`, the lexicons from
   `lexicons/` and the hosting costs from `frontend/src/data/transparency.json`.
-  CI runs `bun sync.ts --check`, which fails when a copy is stale.
+  `npm run bindings` at the repo root regenerates the bindings and runs it.
+  CI runs `bun sync.ts --check`, which fails when a copy is stale, in
+  `ts-bindings-check` (a required check) as well as `exact-test`.
 - `app.test.contract`: tests against the recorded fixtures.
 
 ## Running it
