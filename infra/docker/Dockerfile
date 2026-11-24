@@ -210,7 +210,10 @@ ENTRYPOINT ["/app/observing-task-runner"]
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-observing-species-id
 
-# Install ONNX Runtime shared library.
+# Install ONNX Runtime shared library, from Microsoft's NuGet package: its
+# runtimes/linux-x64/native holds the same libonnxruntime.so as the GitHub
+# release tarball, which stopped downloading when microsoft/onnxruntime
+# answered 404. The checksum pins the package (NuGet publishes its SHA-512 too).
 #
 # Keep the minor version in lockstep with the C API version the `ort` crate
 # asks for (`ort::MINOR_VERSION`, set by its default `api-NN` feature): API
@@ -219,12 +222,12 @@ FROM runtime-base AS runtime-observing-species-id
 # as a Cloud Run "container failed to start and listen on PORT" deploy failure.
 # The const assertion in crates/observing-species-id/src/model.rs fails the
 # build if the two drift apart.
-RUN apt-get update && apt-get install -y curl && \
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o /tmp/ort.tgz \
-      https://github.com/microsoft/onnxruntime/releases/download/v1.27.1/onnxruntime-linux-x64-1.27.1.tgz && \
-    tar xzf /tmp/ort.tgz && \
-    cp onnxruntime-linux-x64-1.27.1/lib/libonnxruntime*.so* /usr/lib/ && \
-    rm -rf onnxruntime-* /tmp/ort.tgz
+RUN apt-get update && apt-get install -y curl unzip && \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o /tmp/ort.nupkg \
+      https://api.nuget.org/v3-flatcontainer/microsoft.ml.onnxruntime/1.27.1/microsoft.ml.onnxruntime.1.27.1.nupkg && \
+    echo "9359e46eba4482ded00e678c98f22b68f51bb411d7934f5516d64050edfa3383  /tmp/ort.nupkg" | sha256sum -c - && \
+    unzip -j /tmp/ort.nupkg 'runtimes/linux-x64/native/libonnxruntime*.so' -d /usr/lib/ && \
+    rm /tmp/ort.nupkg
 
 # Model bundle to bake in. Defaults to the full-accuracy ViT-H build used by
 # the upload/capture path. The faster live-loop service (ViT-L) is the same

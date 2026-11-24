@@ -17,7 +17,7 @@ use tracing::{info, warn};
 
 /// ONNX Runtime C API version the linked `ort` crate requires, which must not
 /// exceed the minor version of the shared library baked into the runtime image
-/// (`onnxruntime-linux-x64-1.27.1` in the species-id stage of
+/// (`microsoft.ml.onnxruntime` 1.27.1 in the species-id stage of
 /// infra/docker/Dockerfile).
 ///
 /// `ort` picks this up from its default `api-NN` feature, so a routine
@@ -25,8 +25,9 @@ use tracing::{info, warn};
 /// happens `ort` panics on dylib load (`BadVersion`) before the server binds
 /// its port, and the only symptom is a Cloud Run "container failed to start and
 /// listen on PORT" deploy failure. This assertion turns that into a build
-/// error: bump the onnxruntime download in infra/docker/Dockerfile to a
-/// matching 1.NN.x release and update this constant together.
+/// error: bump the onnxruntime download (and its checksum) in
+/// infra/docker/Dockerfile to a matching 1.NN.x release and update this
+/// constant together.
 const _: () = assert!(ort::MINOR_VERSION == 27);
 
 /// Default additive boost applied to in-range species when lat/lon is
