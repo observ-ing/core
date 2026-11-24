@@ -27,8 +27,8 @@ it.
 | MM-Grounding-DINO tiny (o365+goldg+v3det) | Apache-2.0 | 692 MB | Not tried (same architecture as Grounding DINO) | 8.0 s (PyTorch) | Best small-object recall of all: a crab spider, individual blossoms, mushrooms. Labels still often wrong: lizard, frog and fish → insect. |
 | LLMDet tiny | Apache-2.0 | 692 MB | Not tried | 9.7 s (PyTorch) | Like MM-Grounding-DINO; ladybird and frog → bird. |
 | OmDet-Turbo (Swin-T) | Apache-2.0 | 462 MB | Not tried | 0.8 s (PyTorch) | Missed most organisms at 0.3: no bee, skipper, ladybird or spider; butterfly → bird, frog boxed as both amphibian and bird. |
-| YOLO-World | **GPL-3.0** (AILab-CVC/YOLO-World); **AGPL-3.0** (Ultralytics build) | — | — | — | Excluded: copyleft, incompatible with shipping inside an MIT/Apache-2.0 service. |
-| YOLOE | **AGPL-3.0** (THU-MIG/yoloe, Ultralytics) | — | — | — | Excluded for the same reason. |
+| YOLO-World v2 | **GPL-3.0** (AILab-CVC/YOLO-World); **AGPL-3.0** (Ultralytics build) | 186–290 MB ONNX (L/X) | Yes | 0.3–0.5 s (ORT) | Excluded for copyleft. Evaluated anyway, see [YOLO models](#yolo-models-license-set-aside): fast, but most animals labelled `bird`. |
+| YOLOE (11 and 26) | **AGPL-3.0** (THU-MIG/yoloe, Ultralytics) | 42–251 MB ONNX (26-S to 26-X) | Yes | 0.08–0.5 s (ORT) | Excluded for copyleft. YOLOE-26L is the best YOLO: ~10× faster than OWLv2, boxes both crab spiders, but weaker labels and misses more. See below. |
 | Florence-2 base | MIT | 463 MB | Not tried | — | Not evaluated. It is generative (an autoregressive decoder emits box tokens), so a Rust port needs a tokenizer plus an encoder/decoder decode loop with KV cache. Worth a look only if OWLv2's recall is the blocker. |
 
 Latency notes: the machine was shared with another session's species-id
@@ -68,6 +68,52 @@ frog, heron, fish, ladybird, aphids, mushrooms, butterfly, blossoms, lizard.
 Box quality was judged by eye from the rendered boxes; this is a smoke test,
 not a benchmark. The next step is to run it on real observ.ing photos (the
 `species-id-bench` export, see `docs/species-id-benchmark.md` on its branch).
+
+## YOLO models (license set aside)
+
+YOLO-World and YOLOE are excluded above for their GPL/AGPL licenses (and
+Ultralytics' position that its weights are AGPL too). To know what that
+costs, they were run anyway, through Ultralytics 8.4 with the same 40
+prompts and 12 labels as OWLv2. Prompts are baked into the ONNX graph at
+export (`model.set_classes(...)` then `model.export(format="onnx")`), so the
+graph has one input (`images [1,3,640,640]`, letterboxed, 0–1) and outputs
+`[1, 4+40(+32 mask coefficients), 8400]` boxes that need NMS, as OWLv2's do.
+All exported cleanly at opset 17 and ran under ORT 1.27.0. For YOLOE-26L the
+ONNX run gave the same detections as PyTorch, within a few hundredths of a
+score (the two letterbox differently).
+
+| Model @ 640 | ONNX size | ORT 1.27, 4 threads | Boxes on the test photos |
+|---|---|---|---|
+| YOLO-World v2 L | 186 MB | 0.32 s | Boxes the lizard, frog, heron, skipper and butterfly well, but labels all but the heron `bird`. Misses the bee, hoverfly, ladybird, fish, mushrooms, aphids and the second crab spider. |
+| YOLO-World v2 X | 290 MB | 0.47 s | Like L; gets the frog (`amphibian`) and hoverfly right, still calls the lizard and butterfly `bird`, misses the skipper. |
+| YOLOE-11 L | 111 MB | 0.23 s | The only model to call the lizard a reptile (`snake`). Frog, heron and ladybird right; skipper and butterfly `bird`; no crab spiders, bee, fish or mushrooms. |
+| YOLOE-26 S | 42 MB | **0.08 s** | Finds the bee (`caterpillar` → insect), hoverfly, ladybird and heron; frog boxed as `fish`, lizard `bird`, misses the skipper. Noisy. |
+| **YOLOE-26 L** | 112 MB | **0.24 s** | **Best YOLO.** Correct: sunflower, knapweed, blossoms, skipper, frog, heron, ladybird, butterfly; the bee only at 0.11. Boxes **both white crab spiders** (labelled `mollusc`) and the lizard (labelled `bird`). Hoverfly boxed together with its spider. Misses the rose, fish, mushrooms and aphids. |
+| YOLOE-26 X | 251 MB | 0.50 s | No better than L. |
+| YOLOE-26 L prompt-free | — | — | Uses its built-in ~4,600-word vocabulary instead of our prompts. Unusable labels on this domain (frog → `octopus`, skipper → `falcon`, knapweed → `pitcher plant`). |
+
+Raising the input to 1280 px, to help small animals, made every YOLO model
+worse: large organisms broke into many part boxes and labels got noisier,
+for ~4× the time. These models are trained at 640.
+
+**Takeaway.** YOLOE-26L is about 10× faster than OWLv2 @ 768 (0.24 s vs
+2–3 s on the same machine) and a third of the size. It finds roughly as many
+organisms, and it finds the white crab spiders OWLv2 misses. Its labels are
+worse (OWLv2: 14 of 17 found and correctly labelled; YOLOE-26L: 9 correct, 3
+more boxed under the wrong label, the bee barely). It also misses
+the fish and mushrooms, which OWLv2 gets. Since the user picks a box and
+`/identify` names the species, a wrong coarse label matters less than a
+missing box, so on boxes alone YOLOE-26L is competitive. If the license
+were acceptable, for example by running it as its own AGPL service, it would
+be the speed option worth A/B-testing against OWLv2 on real observ.ing
+photos. A Rust port would be small: letterbox to 640 with gray 114, divide
+by 255, decode `cx, cy, w, h` from letterbox pixels, then reuse
+`detector.rs`'s per-label max and NMS. Changing prompts means re-exporting
+with Ultralytics (its MobileCLIP text encoder isn't in the graph).
+
+Timings were taken while other sessions were loading the machine (load
+average 4–6 on 10 cores), so absolute numbers are rough. The ratio to OWLv2
+is the useful part.
 
 ## Findings that shaped the prototype
 
