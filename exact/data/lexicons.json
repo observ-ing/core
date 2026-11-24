@@ -1,0 +1,518 @@
+[
+  {
+    "lexicon": 1,
+    "id": "bio.lexicons.temp.v0-1.identification",
+    "defs": {
+      "main": {
+        "type": "record",
+        "description": "An identification suggestion for an existing observation. Used to propose or agree with a taxonomic identification.",
+        "key": "tid",
+        "record": {
+          "type": "object",
+          "required": [
+            "occurrence",
+            "scientificName"
+          ],
+          "properties": {
+            "occurrence": {
+              "type": "ref",
+              "ref": "com.atproto.repo.strongRef",
+              "description": "A strong reference (CID + URI) to the occurrence being identified."
+            },
+            "scientificName": {
+              "type": "string",
+              "description": "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).",
+              "maxLength": 256
+            },
+            "taxonRank": {
+              "type": "string",
+              "description": "The taxonomic rank of the identification (Darwin Core dwc:taxonRank).",
+              "knownValues": [
+                "kingdom",
+                "phylum",
+                "class",
+                "order",
+                "family",
+                "genus",
+                "species",
+                "subspecies",
+                "variety",
+                "form"
+              ],
+              "default": "species",
+              "maxLength": 32
+            },
+            "kingdom": {
+              "type": "string",
+              "description": "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).",
+              "maxLength": 64
+            },
+            "taxonID": {
+              "type": "string",
+              "format": "uri",
+              "description": "Stable URI for the identified taxon (e.g. a GBIF species URI). Maps to Darwin Core dwc:taxonID."
+            },
+            "identificationRemarks": {
+              "type": "string",
+              "description": "DEPRECATED: use identificationRemarksID instead. Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks). Ignored when identificationRemarksID is also set.",
+              "maxLength": 3000
+            },
+            "identificationRemarksID": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body explains the reasoning for this identification. The remark body maps to Darwin Core dwc:identificationRemarks."
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "lexicon": 1,
+    "id": "bio.lexicons.temp.v0-1.media",
+    "defs": {
+      "main": {
+        "type": "record",
+        "description": "A media record for a biodiversity observation. Stores image blobs with metadata such as alt text, aspect ratio, and license.",
+        "key": "tid",
+        "record": {
+          "type": "object",
+          "required": [
+            "image"
+          ],
+          "properties": {
+            "image": {
+              "type": "blob",
+              "accept": [
+                "image/jpeg",
+                "image/png",
+                "image/webp"
+              ],
+              "maxSize": 10000000,
+              "description": "The image blob reference."
+            },
+            "alt": {
+              "type": "string",
+              "description": "Alt text description of the image for accessibility.",
+              "maxLength": 1000
+            },
+            "aspectRatio": {
+              "type": "ref",
+              "ref": "#aspectRatio"
+            },
+            "license": {
+              "type": "string",
+              "description": "URI of the license under which this media is published (Dublin Core dcterms:license). Creative Commons license URIs are the recommended values.",
+              "knownValues": [
+                "https://creativecommons.org/publicdomain/zero/1.0/",
+                "https://creativecommons.org/licenses/by/4.0/",
+                "https://creativecommons.org/licenses/by-nc/4.0/",
+                "https://creativecommons.org/licenses/by-sa/4.0/",
+                "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+              ],
+              "maxLength": 128
+            }
+          }
+        }
+      },
+      "aspectRatio": {
+        "type": "object",
+        "description": "Width and height of an image, used for proper display before loading.",
+        "required": [
+          "width",
+          "height"
+        ],
+        "properties": {
+          "width": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  {
+    "lexicon": 1,
+    "id": "bio.lexicons.temp.v0-1.occurrence",
+    "defs": {
+      "main": {
+        "type": "record",
+        "description": "A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism.",
+        "key": "tid",
+        "record": {
+          "type": "object",
+          "properties": {
+            "eventDate": {
+              "type": "string",
+              "description": "The date, date-time, or interval during which the dwc:Event occurred (Darwin Core dwc:eventDate). Recommended best practice is to use a value that conforms to ISO 8601-1:2019 for single dates or date-times, or to ISO 8601-2:2019 (EDTF) for intervals and dates of reduced or uncertain precision; separate the start and end of an interval with a solidus (\"/\"). Include timezone information whenever a time of day is given. Examples: \"1963-03-08\", \"1971\", \"1906-06\", \"1963-03-08T14:07:00-06:00\", \"1995-05-21/1995-05-23\"."
+            },
+            "decimalLatitude": {
+              "type": "string",
+              "description": "The geographic latitude in decimal degrees (Darwin Core dwc:decimalLatitude). Valid range: -90 to 90."
+            },
+            "decimalLongitude": {
+              "type": "string",
+              "description": "The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180."
+            },
+            "coordinateUncertaintyInMeters": {
+              "type": "integer",
+              "description": "The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters).",
+              "minimum": 0
+            },
+            "media": {
+              "type": "array",
+              "description": "Strong references to media records documenting the observation. Conceptually maps to the DwC-DP Occurrence Media table (https://gbif.github.io/dwc-dp/qrg/#Occurrence%20Media), which replaced the legacy dwc:associatedMedia term.",
+              "items": {
+                "type": "ref",
+                "ref": "com.atproto.repo.strongRef"
+              },
+              "maxLength": 10
+            },
+            "organismQuantity": {
+              "type": "string",
+              "description": "The quantity of the organism present at the time of the Occurrence. Generally an integer or float but may be categorical, e.g. 'many' or '10-100' (Darwin Core dwc:organismQuantity)."
+            },
+            "organismQuantityType": {
+              "type": "string",
+              "description": "The type of quantification system used for the quantity of organisms (Darwin Core dwc:organismQuantityType).",
+              "knownValues": [
+                "individuals",
+                "percent-cover"
+              ]
+            },
+            "occurrenceRemarksID": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the occurrence. The remark body maps to Darwin Core dwc:occurrenceRemarks."
+            },
+            "eventRemarksID": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the event (the time and place) of this occurrence. The remark body maps to Darwin Core dwc:eventRemarks."
+            },
+            "taxonID": {
+              "type": "string",
+              "format": "uri",
+              "description": "Identified taxon the occurrence user has accepted, preferably a stable URI (e.g. a GBIF species URI). Derived from identification specified by acceptedIdentificationID. Must be accompanied by acceptedIdentificationID. Represents a more specific version of the DarwinCore equivalent (Darwin Core dwc:taxonID)."
+            },
+            "acceptedIdentificationID": {
+              "type": "ref",
+              "ref": "com.atproto.repo.strongRef",
+              "description": "Identification accepted by the occurrence user as the source of taxonID. Must be accompanied by taxonID. Indirectly maps to Darwin Core dwc:isAcceptedIdentification."
+            },
+            "externalRecords": {
+              "type": "array",
+              "description": "Records of this same occurrence held outside this lexicon, whether in another AT Protocol lexicon (such as an app.gainforest.dwc.occurrence record) or on a service outside the network entirely (such as an iNaturalist observation). Intended for consumers cross-linking between platforms and for deduplicating observations across them. Has no DwC-DP equivalent; on Darwin Core export the entry URIs concatenate into dwc:otherCatalogNumbers.",
+              "items": {
+                "type": "ref",
+                "ref": "#externalRecord"
+              },
+              "maxLength": 10
+            }
+          }
+        }
+      },
+      "externalRecord": {
+        "type": "object",
+        "description": "A reference to a record of this occurrence kept outside this lexicon, which may still be within the AT Protocol network. The target is an occurrence record, not a photo or other media item depicting the organism; media belong on the occurrence's media field. For a record held in another AT Protocol lexicon, reference it by its at-uri, which is canonical and does not tie the reference to any one appview. For anything else, use the canonical web URL of the occurrence record on the holding service.",
+        "required": [
+          "uri"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "uri",
+            "description": "Stable URI of the record, preferably its canonical permalink. Any URI scheme is permitted, including at:// for records held in another AT Protocol lexicon. Examples: \"https://www.inaturalist.org/observations/123456789\", \"at://did:plc:jt6xegjm6ba2lt34aztyi2mn/app.gainforest.dwc.occurrence/3mu252kzh4y2h\".",
+            "maxLength": 512
+          },
+          "service": {
+            "type": "string",
+            "description": "Short identifier for the service holding the record. For an AT Protocol-based app, use the app name (e.g. \"gainforest\"). Lets consumers group records by platform without parsing hostnames or at-uri collections, which is unreliable across localised network nodes (e.g. inaturalist.nz) and self-hosted instances. Known values are not exhaustive. No Darwin Core equivalent.",
+            "knownValues": [
+              "inaturalist",
+              "bugguide"
+            ],
+            "maxLength": 64
+          }
+        }
+      }
+    }
+  },
+  {
+    "lexicon": 1,
+    "id": "bio.lexicons.temp.v0-1.remark",
+    "defs": {
+      "main": {
+        "type": "record",
+        "description": "Free text that fills a Darwin Core remarks term on another record, such as dwc:occurrenceRemarks on an occurrence. Kept in its own record so authored prose, a potential creative work, can be attributed and licensed separately from the facts in the record it describes. The record it describes points to it with an AT-URI field named for the term (e.g. occurrence.occurrenceRemarksID), and that forward reference is authoritative: a remark nothing references fills no term. Not for discussion or replies.",
+        "key": "tid",
+        "record": {
+          "type": "object",
+          "required": [
+            "subject",
+            "dwcTerm",
+            "body"
+          ],
+          "properties": {
+            "subject": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the record this remark describes, which should be the record whose forward reference points here. Lets the remark be understood and indexed on its own, and lets consumers detect a forward reference that points at the wrong remark."
+            },
+            "dwcTerm": {
+              "type": "string",
+              "description": "The Darwin Core term this remark fills on its subject. Should correspond to the field that references this remark, e.g. occurrenceRemarks for occurrence.occurrenceRemarksID.",
+              "knownValues": [
+                "occurrenceRemarks",
+                "eventRemarks",
+                "identificationRemarks"
+              ],
+              "maxLength": 128
+            },
+            "body": {
+              "type": "string",
+              "description": "The text of the remark. Becomes the value of dwcTerm when the subject is exported to Darwin Core.",
+              "maxLength": 3000
+            },
+            "license": {
+              "type": "string",
+              "description": "URI of the license under which this text is published (Dublin Core dcterms:license). Creative Commons license URIs are the recommended values.",
+              "knownValues": [
+                "https://creativecommons.org/publicdomain/zero/1.0/",
+                "https://creativecommons.org/licenses/by/4.0/",
+                "https://creativecommons.org/licenses/by-nc/4.0/",
+                "https://creativecommons.org/licenses/by-sa/4.0/",
+                "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+              ],
+              "maxLength": 128
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "com.atproto.repo.strongRef",
+    "defs": {
+      "main": {
+        "type": "object",
+        "required": [
+          "uri",
+          "cid"
+        ],
+        "properties": {
+          "cid": {
+            "type": "string",
+            "format": "cid"
+          },
+          "uri": {
+            "type": "string",
+            "format": "at-uri"
+          }
+        }
+      }
+    },
+    "$type": "com.atproto.lexicon.schema",
+    "lexicon": 1,
+    "description": "A URI with a content-hash fingerprint."
+  },
+  {
+    "lexicon": 1,
+    "id": "ing.observ.temp.comment",
+    "defs": {
+      "main": {
+        "type": "record",
+        "description": "A comment on an observation. Used for general discussion, questions, or additional context about an observation.",
+        "key": "tid",
+        "record": {
+          "type": "object",
+          "required": [
+            "subject",
+            "body",
+            "createdAt"
+          ],
+          "properties": {
+            "subject": {
+              "type": "ref",
+              "ref": "com.atproto.repo.strongRef",
+              "description": "A strong reference (CID + URI) to the observation being commented on."
+            },
+            "body": {
+              "type": "string",
+              "description": "The text content of the comment.",
+              "maxLength": 3000
+            },
+            "replyTo": {
+              "type": "ref",
+              "ref": "com.atproto.repo.strongRef",
+              "description": "Optional reference to another comment this is replying to, for threaded discussions."
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Timestamp when this comment was created."
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "lexicon": 1,
+    "id": "ing.observ.temp.interaction",
+    "defs": {
+      "main": {
+        "type": "record",
+        "description": "Species interaction documenting ecological relationship between organisms.",
+        "key": "tid",
+        "record": {
+          "type": "object",
+          "required": [
+            "subjectA",
+            "subjectB",
+            "interactionType",
+            "direction",
+            "createdAt"
+          ],
+          "properties": {
+            "subjectA": {
+              "type": "ref",
+              "ref": "#interactionSubject",
+              "description": "The first subject (actor) in the interaction."
+            },
+            "subjectB": {
+              "type": "ref",
+              "ref": "#interactionSubject",
+              "description": "The second subject (recipient) in the interaction."
+            },
+            "interactionType": {
+              "type": "string",
+              "description": "Type of ecological interaction between the subjects.",
+              "knownValues": [
+                "predation",
+                "pollination",
+                "parasitism",
+                "herbivory",
+                "symbiosis",
+                "mutualism",
+                "competition",
+                "shelter",
+                "transportation",
+                "oviposition",
+                "seed_dispersal"
+              ],
+              "maxLength": 64
+            },
+            "direction": {
+              "type": "string",
+              "description": "Direction of the interaction: AtoB means A acts on B, BtoA means B acts on A, bidirectional means mutual.",
+              "enum": [
+                "AtoB",
+                "BtoA",
+                "bidirectional"
+              ],
+              "default": "AtoB"
+            },
+            "comment": {
+              "type": "string",
+              "description": "Additional notes about the interaction.",
+              "maxLength": 3000
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Timestamp when this record was created."
+            }
+          }
+        }
+      },
+      "interactionSubject": {
+        "type": "object",
+        "description": "A subject in an interaction - can reference an existing occurrence or just specify a taxon.",
+        "properties": {
+          "occurrence": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "Reference to an existing occurrence record."
+          },
+          "taxon": {
+            "type": "ref",
+            "ref": "#taxon",
+            "description": "Taxonomic information for the organism (for unobserved subjects or to specify the taxon)."
+          }
+        }
+      },
+      "taxon": {
+        "type": "object",
+        "description": "Taxonomic information following Darwin Core Taxon class (dwc:Taxon).",
+        "required": [
+          "scientificName"
+        ],
+        "properties": {
+          "scientificName": {
+            "type": "string",
+            "description": "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).",
+            "maxLength": 256
+          },
+          "taxonRank": {
+            "type": "string",
+            "description": "The taxonomic rank of the identification (Darwin Core dwc:taxonRank).",
+            "knownValues": [
+              "kingdom",
+              "phylum",
+              "class",
+              "order",
+              "family",
+              "genus",
+              "species",
+              "subspecies",
+              "variety",
+              "form"
+            ],
+            "default": "species",
+            "maxLength": 32
+          },
+          "kingdom": {
+            "type": "string",
+            "description": "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).",
+            "maxLength": 64
+          }
+        }
+      }
+    }
+  },
+  {
+    "lexicon": 1,
+    "id": "ing.observ.temp.like",
+    "defs": {
+      "main": {
+        "type": "record",
+        "description": "Record expressing appreciation of an observation.",
+        "key": "tid",
+        "record": {
+          "type": "object",
+          "required": [
+            "subject",
+            "createdAt"
+          ],
+          "properties": {
+            "subject": {
+              "type": "ref",
+              "ref": "com.atproto.repo.strongRef",
+              "description": "A strong reference to the observation being liked."
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Timestamp when this like was created."
+            }
+          }
+        }
+      }
+    }
+  }
+]

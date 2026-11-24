@@ -255,6 +255,9 @@ jobs:
             ~/.cache/ms-playwright
             exact/target
           key: exact-${{ runner.os }}-${{ hashFiles('exact/EXACT_REV', 'exact/deploy/exact-patches/*') }}
+      # The app's copies of the bindings, lexicons and hosting costs match the repo's.
+      - run: bun sync.ts --check
+        working-directory: exact
       - run: exact/deploy/setup-exact.sh
       - run: bun exact.mjs test
         working-directory: exact
