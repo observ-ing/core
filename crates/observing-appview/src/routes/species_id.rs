@@ -11,9 +11,11 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::auth::AuthUser;
 use crate::error::ErrorResponse;
-use crate::species_id_client::{IdentifyResponse, SpeciesIdClient, SpeciesIdStatus};
+use crate::species_id_client::{
+    IdentifyResponse, RankFallback, SpeciesIdClient, SpeciesIdStatus, TaxonRank,
+};
 use crate::state::AppState;
-use crate::taxonomy_client::TaxonResult;
+use crate::taxonomy_client::{TaxonResult, TaxonomyClient};
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -68,11 +70,45 @@ pub struct EnrichedSpeciesSuggestion {
     pub taxon_match: Option<TaxonResult>,
 }
 
+/// The most specific taxon above species the model is confident about, for
+/// photos where it can't tell close relatives apart (e.g. "Bumble bees,
+/// *Bombus*"), enriched with the GBIF match like a suggestion.
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[schema(as = RankFallback)]
+pub struct EnrichedRankFallback {
+    #[schema(value_type = String, example = "genus")]
+    pub rank: TaxonRank,
+    pub scientific_name: String,
+    /// Share of the model's probability that falls on species in this taxon,
+    /// from 0 to 1. Not on the same scale as a suggestion's `confidence`.
+    pub confidence: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub common_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kingdom: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phylum: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub class: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub taxon_match: Option<TaxonResult>,
+}
+
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[schema(as = IdentifyResponse)]
 pub struct EnrichedIdentifyResponse {
     pub suggestions: Vec<EnrichedSpeciesSuggestion>,
+    /// A broader answer for when no species is confident but its genus (or
+    /// family, and so on) is. Absent when the top species is confident on its
+    /// own, or when no rank is.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fallback: Option<EnrichedRankFallback>,
     pub model_version: String,
     pub inference_time_ms: u64,
 }
@@ -183,89 +219,192 @@ fn not_configured() -> Response {
         .into_response()
 }
 
-/// Hydrate AI suggestions with GBIF match data, photo, and common name.
-///
-/// For each suggestion we run `validate` (decides whether the AI's name
-/// resolves to a known taxon) and `get_by_name` in parallel. The validate
-/// result's `taxon` field comes from the GBIF species-search shape, which
-/// has sparse photoUrl/vernacular fields — so when validate matches, we
-/// pull `photoUrl` and `commonName` off the `get_by_name` `TaxonDetail`
-/// (which resolves to the canonical usage key, sources the photo from
-/// Wikidata Commons P18, and merges in GBIF's vernacular-names endpoint).
-///
-/// Failures are silently ignored — all three fields are best-effort.
+/// Hydrate AI suggestions, and the rank fallback, with GBIF match data,
+/// photo, and common name. See [`match_name`]. All of it is best-effort.
 async fn enrich_suggestions(
     state: &AppState,
     response: IdentifyResponse,
 ) -> EnrichedIdentifyResponse {
-    let futures = response.suggestions.iter().map(|s| {
-        let taxonomy = state.taxonomy.clone();
-        let name = s.scientific_name.clone();
-        let kingdom = s.kingdom.clone();
-        async move {
-            let (validate_result, by_name_detail) =
-                tokio::join!(taxonomy.validate(&name, kingdom.as_deref()), async {
-                    taxonomy
-                        .get_by_name(&name, kingdom.as_deref())
-                        .await
-                        .ok()
-                        .flatten()
-                },);
-
-            let taxon_match = validate_result
-                .filter(|v| v.valid)
-                .and_then(|v| v.taxon)
-                .map(|mut t| {
-                    if let Some(ref detail) = by_name_detail {
-                        if t.photo_url.is_none() {
-                            t.photo_url = detail.photo_url.clone();
-                        }
-                        if t.common_name.is_none() {
-                            t.common_name = detail.common_name.clone();
-                        }
-                    }
-                    t
-                });
-            let extra_common_name = by_name_detail.and_then(|t| t.common_name);
-            (taxon_match, extra_common_name)
+    let suggestion_matches = futures::future::join_all(
+        response
+            .suggestions
+            .iter()
+            .map(|s| match_name(&state.taxonomy, &s.scientific_name, s.kingdom.as_deref())),
+    );
+    let fallback_match = async {
+        match &response.fallback {
+            Some(f) => {
+                Some(match_name(&state.taxonomy, &f.scientific_name, f.kingdom.as_deref()).await)
+            }
+            None => None,
         }
-    });
-
-    let results: Vec<_> = futures::future::join_all(futures).await;
+    };
+    let (results, fallback_match) = tokio::join!(suggestion_matches, fallback_match);
 
     let suggestions = response
         .suggestions
         .into_iter()
         .zip(results)
-        .map(|(s, (taxon_match, extra_common_name))| {
-            let common_name = s.common_name.or(extra_common_name);
-            if let Some(ref m) = taxon_match {
-                debug!(
-                    scientific_name = %s.scientific_name,
-                    matched_id = %m.id,
-                    matched_rank = %m.rank,
-                    "Hydrated AI suggestion with GBIF match"
-                );
-            }
-            EnrichedSpeciesSuggestion {
-                scientific_name: s.scientific_name,
-                confidence: s.confidence,
-                common_name,
-                kingdom: s.kingdom,
-                phylum: s.phylum,
-                class: s.class,
-                order: s.order,
-                family: s.family,
-                genus: s.genus,
-                in_range: s.in_range,
-                taxon_match,
-            }
-        })
+        .map(
+            |(
+                s,
+                NameMatch {
+                    taxon_match,
+                    common_name,
+                },
+            )| {
+                if let Some(ref m) = taxon_match {
+                    debug!(
+                        scientific_name = %s.scientific_name,
+                        matched_id = %m.id,
+                        matched_rank = %m.rank,
+                        "Hydrated AI suggestion with GBIF match"
+                    );
+                }
+                EnrichedSpeciesSuggestion {
+                    scientific_name: s.scientific_name,
+                    confidence: s.confidence,
+                    common_name: s.common_name.or(common_name),
+                    kingdom: s.kingdom,
+                    phylum: s.phylum,
+                    class: s.class,
+                    order: s.order,
+                    family: s.family,
+                    genus: s.genus,
+                    in_range: s.in_range,
+                    taxon_match,
+                }
+            },
+        )
         .collect();
+
+    let fallback = response
+        .fallback
+        .zip(fallback_match)
+        .map(|(f, name_match)| enrich_fallback(f, name_match));
 
     EnrichedIdentifyResponse {
         suggestions,
+        fallback,
         model_version: response.model_version,
         inference_time_ms: response.inference_time_ms,
+    }
+}
+
+fn enrich_fallback(fallback: RankFallback, name_match: NameMatch) -> EnrichedRankFallback {
+    let RankFallback {
+        rank,
+        scientific_name,
+        confidence,
+        kingdom,
+        phylum,
+        class,
+        order,
+        family,
+    } = fallback;
+    EnrichedRankFallback {
+        rank,
+        scientific_name,
+        confidence,
+        common_name: name_match.common_name,
+        kingdom,
+        phylum,
+        class,
+        order,
+        family,
+        taxon_match: name_match.taxon_match,
+    }
+}
+
+/// What GBIF knows about a name the model returned.
+struct NameMatch {
+    /// Set when `validate` resolves the name to a known taxon.
+    taxon_match: Option<TaxonResult>,
+    /// GBIF's vernacular name, for when the model's labels have none.
+    common_name: Option<String>,
+}
+
+/// Look up a species, genus or family name the model returned.
+///
+/// We run `validate` (decides whether the name resolves to a known taxon)
+/// and `get_by_name` in parallel. The validate result's `taxon` field comes
+/// from the GBIF species-search shape, which has sparse photoUrl/vernacular
+/// fields — so when validate matches, we pull `photoUrl` and `commonName`
+/// off the `get_by_name` `TaxonDetail` (which resolves to the canonical usage
+/// key, sources the photo from Wikidata Commons P18, and merges in GBIF's
+/// vernacular-names endpoint).
+///
+/// Failures are silently ignored — all three fields are best-effort.
+async fn match_name(taxonomy: &TaxonomyClient, name: &str, kingdom: Option<&str>) -> NameMatch {
+    let (validate_result, by_name_detail) = tokio::join!(taxonomy.validate(name, kingdom), async {
+        taxonomy.get_by_name(name, kingdom).await.ok().flatten()
+    });
+
+    let taxon_match = validate_result
+        .filter(|v| v.valid)
+        .and_then(|v| v.taxon)
+        .map(|mut t| {
+            if let Some(ref detail) = by_name_detail {
+                if t.photo_url.is_none() {
+                    t.photo_url = detail.photo_url.clone();
+                }
+                if t.common_name.is_none() {
+                    t.common_name = detail.common_name.clone();
+                }
+            }
+            t
+        });
+    NameMatch {
+        taxon_match,
+        common_name: by_name_detail.and_then(|t| t.common_name),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn enriched_fallback_keeps_the_model_fields_and_adds_the_gbif_ones() {
+        let fallback = RankFallback {
+            rank: TaxonRank::Genus,
+            scientific_name: "Bombus".into(),
+            confidence: 0.75,
+            kingdom: Some("Animalia".into()),
+            phylum: None,
+            class: None,
+            order: None,
+            family: Some("Apidae".into()),
+        };
+        let enriched = enrich_fallback(
+            fallback,
+            NameMatch {
+                taxon_match: None,
+                common_name: Some("Bumble bees".into()),
+            },
+        );
+        assert_eq!(
+            serde_json::to_value(&enriched).unwrap(),
+            serde_json::json!({
+                "rank": "genus",
+                "scientificName": "Bombus",
+                "confidence": 0.75,
+                "commonName": "Bumble bees",
+                "kingdom": "Animalia",
+                "family": "Apidae",
+            })
+        );
+    }
+
+    #[test]
+    fn response_without_fallback_omits_it() {
+        let response = EnrichedIdentifyResponse {
+            suggestions: vec![],
+            fallback: None,
+            model_version: "v".into(),
+            inference_time_ms: 1,
+        };
+        let json = serde_json::to_value(&response).unwrap();
+        assert!(json.get("fallback").is_none(), "{json}");
     }
 }
