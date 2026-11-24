@@ -53,6 +53,9 @@ target
 # ML models (large binary files)
 models/
 
+# species-id-bench datasets (photos) and results
+/species-id-bench/
+
 # Playwright
 playwright/.auth/
 playwright-report/

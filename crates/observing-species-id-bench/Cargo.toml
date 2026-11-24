@@ -1,0 +1,33 @@
+[package]
+name = "observing-species-id-bench"
+version = "0.1.0"
+edition = "2021"
+description = "Offline accuracy benchmark for the observing-species-id service"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+# Wire types of the service under test
+observing-species-id-protocol = { path = "../observing-species-id-protocol" }
+# Identification rows and the community-ID rule the appview uses
+observing-db = { path = "../observing-db" }
+# Fetching photos from their authors' PDSes
+atproto-blob-resolver = { path = "../atproto-blob-resolver" }
+
+anyhow = "1"
+base64 = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true, features = ["env"] }
+futures = { workspace = true }
+hex = "0.4"
+reqwest = { workspace = true, features = ["query"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.11"
+sqlx = { workspace = true, features = ["json"] }
+tokio = { workspace = true }
+
+
+[[bin]]
+name = "species-id-bench"
+path = "src/main.rs"

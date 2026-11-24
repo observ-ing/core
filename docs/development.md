@@ -169,6 +169,9 @@ The `species-id` service loads BioCLIP ONNX models from `MODEL_DIR`
 The `models/` directory is gitignored. Re-run the script after a
 checkout on a new machine, or whenever model versions are bumped.
 
+To measure species-id accuracy and latency, or compare two builds, see
+[species-id-benchmark.md](species-id-benchmark.md).
+
 ## Tap binary
 
 `tap-ingester` spawns the upstream [`tap`](https://github.com/bluesky-social/indigo/tree/main/cmd/tap)
