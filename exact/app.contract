@@ -27,6 +27,11 @@ routes nav
   tab notifications "/notifications"
   tab account "/account"
     app "/app"
+    // observ.ing's reference pages, at the original's paths.
+    docs "/docs"
+    lexicons "/lexicons"
+    transparency "/transparency"
+    serviceStatus "/status"
 
 shape Observation
   did: string
@@ -330,6 +335,68 @@ shape Downloads
   android: string
   ios: string
 
+shape About
+  apiDocs: string
+
+// A lexicon (an AT Protocol record schema), its definitions and their properties, flattened for reading.
+shape LexProp
+  name: string
+  // "string (datetime)", "ref → strongRef", "array<string>".
+  type: string
+  required: bool
+  deprecated: bool
+  description: string
+  // Its enum or known values.
+  values: string[]
+  // "max length: 64 · default: false".
+  notes: string
+
+shape LexDef
+  name: string
+  type: string
+  key: string
+  description: string
+  props: LexProp[]
+
+shape Lexicon
+  id: string
+  description: string
+  // observ.ing's own (ing.observ.*, bio.lexicons.*), not a third party's.
+  project: bool
+  defs: LexDef[]
+
+// The monthly hosting costs, formatted: a row a month, newest first, a column a category.
+shape CostRow
+  month: string
+  cells: string[]
+  total: string
+
+shape CostCategory
+  name: string
+  description: string
+
+shape Costs
+  notes: string
+  columns: string[]
+  rows: CostRow[]
+  totals: string[]
+  total: string
+  categories: CostCategory[]
+
+shape ServiceRow
+  id: string
+  name: string
+  description: string
+  // awake, asleep, up or down.
+  state: string
+  label: string
+  // "1 instance, 1 busy".
+  summary: string
+
+shape Services
+  services: ServiceRow[]
+  checkedAt: number
+
 shape Reply
   ok: bool
   error: string
@@ -473,6 +540,11 @@ component App
   mutation updated as shape Reply refreshes detail, feed, home, person, taxonPage then afterUpdate
   resource inat = loadInat(account.did) as shape InatState else empty()
   resource downloads = loadDownloads() as shape Downloads else empty()
+  resource about = loadAbout() as shape About else empty()
+  resource lexicons = loadLexicons() as shape Lexicon[] else empty()
+  resource costs = loadTransparency() as shape Costs else empty()
+  // Asked each time the status page opens, and only then: asking wakes the appview.
+  resource services = loadStatus() when top(nav).name == "serviceStatus" as shape Services else empty()
   resource personIds = loadProfileIds(profileTab == "identifications" ? profileDid : "", profileIdPages) as shape ProfileIds else empty()
   resource crosspost = crosspostStatus(detail.mine ? detail.uri : "") as shape Crosspost else empty()
   mutation inatLinked as shape Reply refreshes inat
@@ -524,6 +596,7 @@ component App
   derive myIdentification = match detail.identifications.filter(i => i.mine).at(-1) { case some(i) => i.uri, case none => "" }
   // Agree adds the shown name as your own identification: offered unless yours already is it.
   derive canAgree = detail.obs.scientificName != "" and (match detail.identifications.filter(i => i.mine).at(-1) { case some(i) => i.scientificName != detail.obs.scientificName, case none => true })
+  derive servicesError = pending(services) ? "" : match failure(services) { case some(f) => problem(f.code, "the service status"), case none => "" }
   derive notesError = pending(notes) ? "" : match failure(notes) { case some(f) => problem(f.code, "your notifications"), case none => "" }
   derive licenses = [Choice(value="https://creativecommons.org/publicdomain/zero/1.0/", label="CC0 (Public Domain)"), Choice(value="https://creativecommons.org/licenses/by/4.0/", label="CC BY (Attribution)"), Choice(value="https://creativecommons.org/licenses/by-nc/4.0/", label="CC BY-NC (Attribution, Non-Commercial)"), Choice(value="https://creativecommons.org/licenses/by-sa/4.0/", label="CC BY-SA (Attribution, Share-Alike)"), Choice(value="https://creativecommons.org/licenses/by-nc-sa/4.0/", label="CC BY-NC-SA (Attribution, Non-Commercial, Share-Alike)")]
   derive firstPhoto = match first(newPhotos) { case some(p) => p, case none => "" }
@@ -634,6 +707,8 @@ component App
 
   action reloadDetail
     refresh detail
+  action reloadServices
+    refresh services
   action reloadPerson
     refresh person
   action morePerson
@@ -1621,6 +1696,127 @@ component App
                           button press=moreNotes disabled=pending(notes) testId="more-notes"
                             text (pending(notes) ? "Loading…" : "Show More")
 
+              if e.name == "docs"
+                column navigationKey=`${e.id}` navigationScroll="docs-list" position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text "Docs" role="heading" aria-level=1 flex=1
+                  list id="docs-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    section
+                      link href=path("lexicons") testId="docs-lexicons"
+                        DocRow(title="Lexicons", about="AT Protocol record schemas that define how data is stored.", external=false)
+                      button press=openExternal(about.apiDocs) testId="docs-api"
+                        DocRow(title="API", about="OpenAPI reference for the HTTP API, browsable in Swagger UI.", external=true)
+                      link href=path("transparency") testId="docs-transparency"
+                        DocRow(title="Transparency", about="Monthly Google Cloud hosting costs for observ.ing.", external=false)
+                      link href=path("serviceStatus") testId="docs-status"
+                        DocRow(title="Status", about="Which services are running right now, and which are asleep.", external=false)
+                      button press=openExternal("https://storybook.observ.ing") testId="docs-storybook"
+                        DocRow(title="Storybook", about="Interactive component library and UI documentation for observ.ing’s website.", external=true)
+                      button press=openExternal("https://github.com/observ-ing/core") testId="docs-source"
+                        DocRow(title="Source Code", about="Browse the project on GitHub.", external=true)
+                      footer
+                        text "Reference material and resources for observ.ing."
+
+              if e.name == "lexicons"
+                column navigationKey=`${e.id}` navigationScroll="lexicons-page" position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text "Lexicons" role="heading" aria-level=1 flex=1
+                  scroll id="lexicons-page" flex=1 min-height=0 overflow-x="hidden" testId="lexicons-page"
+                    column gap=16 padding=16 width="100%" max-width="50rem" margin="0 auto" box-sizing="border-box"
+                      text "observ.ing is built on the AT Protocol. All its data is stored as records defined by these Lexicon schemas, which follow the Darwin Core biodiversity standards." color="-exact-secondary-label"
+                      row gap=8 flex-wrap="wrap"
+                        button press=openExternal("https://atproto.com") testId="lexicons-atproto"
+                          text "AT Protocol"
+                        button press=openExternal("https://atproto.com/guides/lexicon")
+                          text "Lexicon"
+                        button press=openExternal("https://dwc.tdwg.org")
+                          text "Darwin Core"
+                      text "Project Lexicons" role="heading" aria-level=2 font="-exact-title3" font-weight=600
+                      for l in lexicons.filter(l => l.project) key=l.id
+                        LexiconCard(l=l)
+                      text "External Lexicons" role="heading" aria-level=2 font="-exact-title3" font-weight=600
+                      text "Third-party AT Protocol lexicons observ.ing uses." color="-exact-secondary-label"
+                      for l in lexicons.filter(l => not l.project) key=l.id
+                        LexiconCard(l=l)
+
+              if e.name == "transparency"
+                column navigationKey=`${e.id}` navigationScroll="transparency-page" position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text "Transparency" role="heading" aria-level=1 flex=1
+                  scroll id="transparency-page" flex=1 min-height=0 overflow-x="hidden" testId="transparency-page"
+                    column gap=16 padding=16 width="100%" max-width="60rem" margin="0 auto" box-sizing="border-box"
+                      text costs.notes color="-exact-secondary-label" testId="transparency-notes"
+                      if costs.rows.length == 0
+                        text "No cost data has been recorded yet." color="-exact-secondary-label"
+                      else
+                        // As wide as its columns: it scrolls sideways on a narrow window.
+                        scroll overflow-x="auto" overflow-y="hidden" width="100%" testId="cost-table"
+                          table aria-label="Monthly hosting costs" font="-exact-footnote" border-spacing=0 white-space="nowrap"
+                            thead
+                              tr
+                                th scope="col" text-align="start" padding="6px 8px"
+                                  text "Month"
+                                for c in costs.columns key=c
+                                  th scope="col" text-align="end" padding="6px 8px"
+                                    text c
+                                th scope="col" text-align="end" padding="6px 8px"
+                                  text "Total"
+                            tbody
+                              for r, n in costs.rows key=r.month
+                                tr
+                                  th scope="row" text-align="start" font-weight=400 border-top="1px solid -exact-separator" padding="6px 8px"
+                                    text r.month testId=`cost-month-${n}`
+                                  for v, i in r.cells key=i
+                                    td text-align="end" border-top="1px solid -exact-separator" padding="6px 8px"
+                                      text v
+                                  td text-align="end" font-weight=600 border-top="1px solid -exact-separator" padding="6px 8px"
+                                    text r.total testId=`cost-total-${n}`
+                            tfoot
+                              tr
+                                th scope="row" text-align="start" border-top="1px solid -exact-separator" padding="6px 8px"
+                                  text "Total"
+                                for v, i in costs.totals key=i
+                                  td text-align="end" font-weight=600 border-top="1px solid -exact-separator" padding="6px 8px"
+                                    text v
+                                td text-align="end" font-weight=600 border-top="1px solid -exact-separator" padding="6px 8px"
+                                  text costs.total testId="cost-grand-total"
+                      column gap=10
+                        for c in costs.categories key=c.name
+                          column gap=2
+                            text c.name font-weight=600
+                            text c.description font="-exact-footnote" color="-exact-secondary-label"
+
+              if e.name == "serviceStatus"
+                column navigationKey=`${e.id}` navigationScroll="status-list" position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text "Status" role="heading" aria-level=1 flex=1
+                  text "Which parts of observ.ing are running right now. To save money, most services scale down to nothing when no one is using them (asleep) and start back up on the next request."
+                    padding="4px 20px 0" font="-exact-footnote" color="-exact-secondary-label"
+                  list id="status-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    section
+                      if services.services.length == 0
+                        row gap=8 flex-wrap="wrap" align-items="center"
+                          text (servicesError != "" ? servicesError : "Checking…") flex=1 color="-exact-secondary-label" testId="status-note"
+                          if servicesError != ""
+                            button press=reloadServices testId="status-retry"
+                              text "Try Again"
+                      for s in services.services key=s.id
+                        row gap=12 align-items="flex-start" testId=`service-${s.id}`
+                          column flex=1 min-width=0 gap=2
+                            text s.name
+                            text s.description font="-exact-footnote" color="-exact-secondary-label"
+                          column align-items="flex-end" gap=2 flex-shrink=0
+                            // The colour is a dot's: as text, green is too light to read on white.
+                            row gap=6 align-items="center"
+                              view width=8 height=8 border-radius=4
+                                background-color=(s.state == "awake" or s.state == "up" ? "-exact-system-green" : (s.state == "down" ? "-exact-system-red" : "-exact-secondary-label"))
+                              text s.label font="-exact-footnote" font-weight=600 testId=`service-${s.id}-state`
+                            if s.summary != ""
+                              text s.summary font="-exact-footnote" color="-exact-secondary-label" testId=`service-${s.id}-summary`
+                      footer
+                        text (services.checkedAt > 0 ? `Checked ${formatDay(services.checkedAt, now, offset, "day-time")}. Instance counts trail by about 3 minutes. Opening this page wakes the website and API, so it always shows as awake here.` : "")
+                          testId="status-checked"
+
               if e.name == "app"
                 column navigationKey=`${e.id}` navigationScroll="app-page" position="absolute" inset=0
                   header display="flex" align-items="center" padding="8px 16px"
@@ -1723,6 +1919,12 @@ component App
                           option "Dark" value="dark"
                       footer
                         text (theme == "system" ? "Follows your device’s light or dark setting." : "")
+                    section testId="about"
+                      link href=path("docs") testId="account-docs"
+                        text "Docs" flex=1
+                        image "symbol:forward-chevron"
+                      footer
+                        text "The lexicons, the API, hosting costs, service status and source code."
                     if downloads.android != ""
                       section testId="downloads"
                         link href=path("app") testId="account-app"
@@ -1988,6 +2190,53 @@ component NotFound
       text message color="-exact-secondary-label" text-align="center" max-width="24rem" overflow-wrap="break-word"
       button press=retry testId=`${testPrefix}-retry`
         text "Try Again"
+
+// A row of the Docs page: a page here (a chevron) or a site elsewhere (a link).
+component DocRow
+  props
+    title: string
+    about: string
+    external: bool
+  view
+    row gap=12 align-items="center" flex=1 min-width=0 padding="8px 0"
+      column flex=1 min-width=0 gap=2
+        text title
+        text about font="-exact-footnote" color="-exact-secondary-label"
+      image (external ? "symbol:link" : "symbol:forward-chevron") color="-exact-secondary-label"
+
+// A lexicon: its id and what it's for, then each definition and its properties.
+component LexiconCard
+  props
+    l: Lexicon
+  view
+    column class=Card gap=12 testId=`lexicon-${l.id}`
+      column gap=4
+        text l.id font-family="ui-monospace, monospace" font-weight=700 overflow-wrap="anywhere"
+        if l.description != ""
+          text l.description color="-exact-secondary-label" overflow-wrap="break-word"
+      for d in l.defs key=d.name
+        column gap=4
+          row gap="2px 8px" flex-wrap="wrap" align-items="baseline"
+            text `#${d.name}` font-family="ui-monospace, monospace" font-weight=600
+            text d.type font="-exact-footnote" color="-exact-secondary-label"
+            if d.key != ""
+              text `key: ${d.key}` font="-exact-footnote" color="-exact-secondary-label"
+          if d.description != ""
+            text d.description font="-exact-footnote" color="-exact-secondary-label" overflow-wrap="break-word"
+          for p in d.props key=p.name
+            column gap=2 padding="8px 0" border-top="1px solid -exact-separator" testId=`lexprop-${l.id}-${d.name}-${p.name}`
+              row gap="2px 8px" flex-wrap="wrap" align-items="baseline"
+                text p.name font-family="ui-monospace, monospace" font-weight=600 overflow-wrap="anywhere"
+                  color=(p.deprecated ? "-exact-secondary-label" : "-exact-label") text-decoration=(p.deprecated ? "line-through" : "none")
+                text p.type font="-exact-footnote" color="-exact-secondary-label" overflow-wrap="anywhere"
+                if p.required
+                  text "required" font="-exact-footnote" color="-exact-system-orange"
+              if p.description != ""
+                text p.description font="-exact-footnote" overflow-wrap="break-word"
+              if p.values.length > 0
+                text p.values.join(" · ") font="-exact-footnote" font-family="ui-monospace, monospace" color="-exact-secondary-label" overflow-wrap="anywhere"
+              if p.notes != ""
+                text p.notes font="-exact-footnote" color="-exact-secondary-label"
 
 // One observation: its photos, names, data quality, facts, map, identifications, comments and links.
 component ObservationDetail
