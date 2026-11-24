@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Box } from "@mui/material";
 import { VisualIdCards } from "./VisualIdCards";
-import type { SpeciesSuggestion } from "../../services/api";
+import type { IdentifyFallback, SpeciesSuggestion } from "../../services/api";
 
 const noop = () => undefined;
 
@@ -153,6 +153,91 @@ const NO_COMMON_ANCESTOR: SpeciesSuggestion[] = [
   },
 ];
 
+const BEE_LINEAGE = {
+  kingdom: "Animalia",
+  phylum: "Arthropoda",
+  class: "Insecta",
+  order: "Hymenoptera",
+  family: "Apidae",
+  genus: "Bombus",
+};
+
+/**
+ * Bumble bees the model can't tell apart. Each score is a raw similarity, so
+ * they sit close together and no species stands out.
+ */
+const BUMBLE_BEES: SpeciesSuggestion[] = (
+  [
+    ["Bombus impatiens", "Common Eastern Bumble Bee", 0.29],
+    ["Bombus griseocollis", "Brown-belted Bumble Bee", 0.285],
+    ["Bombus bimaculatus", "Two-spotted Bumble Bee", 0.282],
+    ["Bombus vagans", "Half-black Bumble Bee", 0.279],
+    ["Bombus perplexus", "Confusing Bumble Bee", 0.276],
+  ] satisfies [string, string, number][]
+).map(([scientificName, commonName, confidence]) => ({
+  scientificName,
+  commonName,
+  confidence,
+  ...BEE_LINEAGE,
+}));
+
+const BOMBUS_FALLBACK: IdentifyFallback = {
+  rank: "genus",
+  scientificName: "Bombus",
+  confidence: 0.86,
+  kingdom: "Animalia",
+  phylum: "Arthropoda",
+  class: "Insecta",
+  order: "Hymenoptera",
+  family: "Apidae",
+  commonName: "Bumble bees",
+  taxonMatch: {
+    id: "Animalia/Bombus",
+    taxonId: "https://www.gbif.org/species/1340278",
+    scientificName: "Bombus",
+    commonName: "Bumble bees",
+    photoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Bombus_impatiens.jpg?width=300",
+    rank: "genus",
+    kingdom: "Animalia",
+    source: "gbif",
+  },
+};
+
+const SPARROW_LINEAGE = {
+  kingdom: "Animalia",
+  phylum: "Chordata",
+  class: "Aves",
+  order: "Passeriformes",
+  family: "Passerellidae",
+};
+
+/** Sparrows from several genera: only the family is confident. */
+const SPARROWS: SpeciesSuggestion[] = (
+  [
+    ["Melospiza melodia", "Song Sparrow", "Melospiza", 0.27],
+    ["Passerculus sandwichensis", "Savannah Sparrow", "Passerculus", 0.265],
+    ["Spizella passerina", "Chipping Sparrow", "Spizella", 0.26],
+    ["Zonotrichia albicollis", "White-throated Sparrow", "Zonotrichia", 0.255],
+  ] satisfies [string, string, string, number][]
+).map(([scientificName, commonName, genus, confidence]) => ({
+  scientificName,
+  commonName,
+  confidence,
+  ...SPARROW_LINEAGE,
+  genus,
+}));
+
+/** No GBIF match came back, so the card shows the rank chip instead of a photo. */
+const PASSERELLIDAE_FALLBACK: IdentifyFallback = {
+  rank: "family",
+  scientificName: "Passerellidae",
+  confidence: 0.74,
+  kingdom: "Animalia",
+  phylum: "Chordata",
+  class: "Aves",
+  order: "Passeriformes",
+};
+
 const meta = {
   title: "Identification/VisualIdCards",
   component: VisualIdCards,
@@ -225,5 +310,30 @@ export const AmbiguousAtClass: Story = {
 export const NoCommonAncestor: Story = {
   args: {
     suggestions: NO_COMMON_ANCESTOR,
+  },
+};
+
+/**
+ * The server sent a fallback: no bumble bee is confident, but 86% of the
+ * model's probability is on *Bombus*. The genus leads with its GBIF photo and
+ * common name, and the percentage reads "likely" because it's a probability,
+ * not a similarity score like the species rows.
+ */
+export const ServerFallbackGenus: Story = {
+  args: {
+    suggestions: BUMBLE_BEES,
+    fallback: BOMBUS_FALLBACK,
+  },
+};
+
+/**
+ * A server fallback at family level, without a GBIF match. Unlike
+ * `findCommonAncestor`, the server doesn't need every suggestion to share
+ * the taxon; it weighs every species the model knows.
+ */
+export const ServerFallbackFamily: Story = {
+  args: {
+    suggestions: SPARROWS,
+    fallback: PASSERELLIDAE_FALLBACK,
   },
 };

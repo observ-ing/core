@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { identifySpecies, type SpeciesSuggestion } from "../services/api";
+import { identifySpecies, type IdentifyFallback, type SpeciesSuggestion } from "../services/api";
 import { useAppDispatch } from "../store";
 import { addToast } from "../store/uiSlice";
 import { fileToBase64 } from "../lib/utils";
@@ -25,6 +25,7 @@ export function useVisualId({
 }: UseVisualIdOptions) {
   const dispatch = useAppDispatch();
   const [suggestions, setSuggestions] = useState<SpeciesSuggestion[]>([]);
+  const [fallback, setFallback] = useState<IdentifyFallback | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const fetchedRef = useRef(false);
@@ -33,6 +34,7 @@ export function useVisualId({
   const handleFetch = async () => {
     setIsLoading(true);
     setSuggestions([]);
+    setFallback(undefined);
     // Usually already warmed when the flow opened; this covers entry points
     // that weren't, and gets a countdown if the service is still booting.
     warmSpeciesId();
@@ -51,6 +53,7 @@ export function useVisualId({
       const result = await identifySpecies(params);
       markSpeciesIdWarm();
       setSuggestions(result.suggestions);
+      setFallback(result.fallback);
       setHasLoaded(true);
       if (result.suggestions.length === 0 && !quiet) {
         dispatch(addToast({ message: "No species suggestions found", type: "success" }));
@@ -73,5 +76,5 @@ export function useVisualId({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFetch]);
 
-  return { suggestions, isLoading, hasLoaded, handleFetch, readyAt };
+  return { suggestions, fallback, isLoading, hasLoaded, handleFetch, readyAt };
 }
