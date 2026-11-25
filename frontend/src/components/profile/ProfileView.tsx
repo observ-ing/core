@@ -24,8 +24,8 @@ import { UserCard } from "../common/UserCard";
 import { taxonNameFontStyle } from "../common/TaxonLink";
 import { ObservationGridCard, observationGridCardContentSx } from "../common/ObservationGridCard";
 import { ObservationGridCardSkeleton } from "../common/ObservationGridCardSkeleton";
-import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
+import { LoadMoreButton } from "../common/LoadMoreButton";
 import { FullPageStatus } from "../common/FullPageStatus";
 import { fullPageStatusSecondaryActionSx } from "../common/layoutSx";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
@@ -232,16 +232,11 @@ export function ProfileView() {
           )}
         </Box>
       )}
-      {isFetchingNextPage && <CenteredSpinner color="primary" />}
       {!isLoading && occurrences.length === 0 && identifications.length === 0 && (
         <EmptyState message="No activity yet" />
       )}
-      {hasMore && !isLoading && !isFetchingNextPage && (
-        <Box sx={{ p: 2, textAlign: "center" }}>
-          <Button variant="outlined" onClick={() => void fetchNextPage()}>
-            Load more
-          </Button>
-        </Box>
+      {hasMore && !isLoading && (
+        <LoadMoreButton loading={isFetchingNextPage} onClick={() => void fetchNextPage()} />
       )}
     </Container>
   );
