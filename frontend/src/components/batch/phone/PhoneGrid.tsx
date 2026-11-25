@@ -48,6 +48,7 @@ import {
 import { plural } from "../../../lib/utils";
 import { SelectionBox, formatBatchDate } from "../BatchCard";
 import { BottomBar, StackedAction } from "./PhoneStep";
+import { ConvertingStatus } from "../ConvertingStatus";
 
 /** Touch-sized pill for the All / Incomplete filter chips. */
 const filterChipSx = { height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 };
@@ -330,16 +331,7 @@ export function PhoneGrid({
                   sx={filterChipSx}
                 />
               )}
-              {converting > 0 && (
-                <Typography
-                  role="status"
-                  variant="body2"
-                  sx={{ display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}
-                >
-                  <CircularProgress size={14} color="inherit" />
-                  Converting {plural(converting, "HEIC photo")}…
-                </Typography>
-              )}
+              <ConvertingStatus count={converting} variant="body2" />
             </Box>
           </>
         )}
