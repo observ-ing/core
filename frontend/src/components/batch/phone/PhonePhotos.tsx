@@ -11,10 +11,17 @@ import CheckIcon from "@mui/icons-material/Check";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 import UndoIcon from "@mui/icons-material/Undo";
-import { coverImageSx } from "../../common/layoutSx";
+import {
+  cardRadius,
+  coverImageSx,
+  panelRadius,
+  thumbnailFrameSx,
+  touchTarget,
+} from "../../common/layoutSx";
 import { isReading, type BatchObservation } from "../../../lib/batchUpload";
 import { MAX_IMAGES } from "../../../lib/imageSelection";
 import { plural } from "../../../lib/utils";
+import { monoStack } from "../../../theme";
 import { SelectionBox } from "../BatchCard";
 import { setPhotoDragImage } from "../photoDragImage";
 import { PhoneStep, StackedAction } from "./PhoneStep";
@@ -93,7 +100,7 @@ function DropTarget({
         border: 2,
         borderStyle: active ? "solid" : "dashed",
         borderColor: danger || active ? color : "text.secondary",
-        borderRadius: 1.25,
+        borderRadius: cardRadius,
         bgcolor: active ? color : "background.paper",
         color: active ? "common.white" : danger ? "error.main" : "text.primary",
         fontSize: 14,
@@ -250,7 +257,7 @@ export function PhonePhotos({
   ) : notice ? (
     <>
       <Box role="status" sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-        <Box sx={{ width: 44, height: 44, flexShrink: 0, borderRadius: 0.75, overflow: "hidden" }}>
+        <Box sx={{ width: 44, height: 44, flexShrink: 0, ...thumbnailFrameSx }}>
           <Box component="img" src={notice.thumbnailUrl} alt="" sx={coverImageSx} />
         </Box>
         <Box sx={{ minWidth: 0 }}>
@@ -268,7 +275,7 @@ export function PhonePhotos({
           color="inherit"
           startIcon={<UndoIcon />}
           onClick={onUndo}
-          sx={{ flex: 1, minHeight: 44 }}
+          sx={{ flex: 1, minHeight: touchTarget }}
         >
           Undo
         </Button>
@@ -278,7 +285,7 @@ export function PhonePhotos({
             color="inherit"
             startIcon={<EditIcon />}
             onClick={notice.onEdit}
-            sx={{ flex: 1, minHeight: 44 }}
+            sx={{ flex: 1, minHeight: touchTarget }}
           >
             Edit it
           </Button>
@@ -287,7 +294,7 @@ export function PhonePhotos({
           variant="contained"
           startIcon={<CheckIcon />}
           onClick={onDismissNotice}
-          sx={{ flex: 1, minHeight: 44 }}
+          sx={{ flex: 1, minHeight: touchTarget }}
         >
           OK
         </Button>
@@ -411,7 +418,7 @@ export function PhonePhotos({
                     borderRadius: 3,
                     bgcolor: theme.palette.overlay["modalChip"],
                     color: "common.white",
-                    fontFamily: "monospace",
+                    fontFamily: monoStack,
                     fontWeight: 600,
                   }}
                 >
@@ -449,7 +456,13 @@ export function PhonePhotos({
       </Box>
       <Paper
         variant="outlined"
-        sx={{ display: "flex", gap: 1.5, p: 1.75, borderRadius: 1.5, color: "text.secondary" }}
+        sx={{
+          display: "flex",
+          gap: 1.5,
+          p: 1.75,
+          borderRadius: panelRadius,
+          color: "text.secondary",
+        }}
       >
         <CallSplitIcon fontSize="small" />
         <Typography variant="body2">

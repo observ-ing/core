@@ -1,7 +1,7 @@
 //! HTTP server for species identification service
 
 use crate::model::BioclipModel;
-use crate::types::{HealthResponse, IdentifyRequest, IdentifyResponse};
+use crate::types::{HealthResponse, Identification, IdentifyRequest, IdentifyResponse};
 use axum::{
     extract::{DefaultBodyLimit, State},
     http::StatusCode,
@@ -84,16 +84,22 @@ async fn identify(State(state): State<SharedState>, Json(body): Json<IdentifyReq
             .await;
 
     match result {
-        Ok(Ok(suggestions)) => {
+        Ok(Ok(Identification {
+            suggestions,
+            fallback,
+        })) => {
             let elapsed = start.elapsed();
             info!(
                 suggestions = suggestions.len(),
+                fallback_rank = ?fallback.as_ref().map(|f| f.rank),
+                fallback_confidence = ?fallback.as_ref().map(|f| f.confidence),
                 inference_ms = elapsed.as_millis(),
                 "Species identification complete"
             );
 
             Json(IdentifyResponse {
                 suggestions,
+                fallback,
                 model_version: state.model.version.clone(),
                 inference_time_ms: elapsed.as_millis() as u64,
             })

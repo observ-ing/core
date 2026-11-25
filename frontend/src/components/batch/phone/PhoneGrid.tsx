@@ -26,7 +26,17 @@ import ErrorIcon from "@mui/icons-material/Error";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { coverImageSx, overlayBadgeSx } from "../../common/layoutSx";
+import {
+  cardRadius,
+  coverImageSx,
+  miniIconSx,
+  overlayBadgeSx,
+  pageTitleSx,
+  phoneBarTitleSx,
+  touchTarget,
+  tallRowMinHeight,
+  touchTargetLarge,
+} from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
   canCombine,
@@ -38,6 +48,10 @@ import {
 import { plural } from "../../../lib/utils";
 import { SelectionBox, formatBatchDate } from "../BatchCard";
 import { BottomBar, StackedAction } from "./PhoneStep";
+import { ConvertingStatus } from "../ConvertingStatus";
+
+/** Touch-sized pill for the All / Incomplete filter chips. */
+const filterChipSx = { height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 };
 
 export interface PhoneGridProps {
   /** Every observation still to be sent, in batch order. */
@@ -95,7 +109,7 @@ function PhoneCard({
         position: "relative",
         minWidth: 0,
         bgcolor: "background.paper",
-        borderRadius: 1.25,
+        borderRadius: cardRadius,
         border: 1,
         borderColor: failed ? "error.main" : "divider",
         outline: checked ? 3 : 0,
@@ -126,7 +140,7 @@ function PhoneCard({
                 ...overlayBadgeSx,
               }}
             >
-              <PhotoLibraryIcon sx={{ fontSize: 14 }} />
+              <PhotoLibraryIcon sx={miniIconSx} />
               {photos.length}
             </Typography>
           )}
@@ -186,7 +200,7 @@ function PhoneCard({
                     color: "warning.main",
                   }}
                 >
-                  <WarningAmberIcon sx={{ fontSize: 14 }} />
+                  <WarningAmberIcon sx={miniIconSx} />
                   {describeMissing(missing)}
                 </Typography>
               )}
@@ -201,7 +215,7 @@ function PhoneCard({
                     color: "error.main",
                   }}
                 >
-                  <ErrorIcon sx={{ fontSize: 14 }} />
+                  <ErrorIcon sx={miniIconSx} />
                   Upload failed
                 </Typography>
               )}
@@ -262,18 +276,18 @@ export function PhoneGrid({
           elevation={0}
           sx={{ bgcolor: "primary.dark", zIndex: (theme) => theme.zIndex.drawer + 2 }}
         >
-          <Toolbar sx={{ minHeight: 64, gap: 0.5, px: 1 }}>
+          <Toolbar sx={{ minHeight: tallRowMinHeight, gap: 0.5, px: 1 }}>
             <IconButton color="inherit" onClick={onClearSelection} aria-label="Clear selection">
               <CloseIcon />
             </IconButton>
-            <Typography role="status" sx={{ flex: 1, fontWeight: 700, fontSize: 18 }}>
+            <Typography role="status" sx={{ flex: 1, ...phoneBarTitleSx }}>
               {picked.length} selected
             </Typography>
             <Button
               color="inherit"
               startIcon={<SelectAllIcon />}
               onClick={() => onSelectAll(shown.map((o) => o.id))}
-              sx={{ minHeight: 44 }}
+              sx={{ minHeight: touchTarget }}
             >
               Select all
             </Button>
@@ -289,7 +303,7 @@ export function PhoneGrid({
         ) : (
           <>
             <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 1.5 }}>
-              <Typography variant="h5" component="h1" sx={{ flex: 1, fontWeight: 700 }}>
+              <Typography variant="h5" component="h1" sx={{ flex: 1, ...pageTitleSx }}>
                 Batch upload
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -304,7 +318,7 @@ export function PhoneGrid({
                 aria-pressed={!filtering}
                 color={filtering ? "default" : "primary"}
                 variant={filtering ? "outlined" : "filled"}
-                sx={{ height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 }}
+                sx={filterChipSx}
               />
               {incomplete.length > 0 && (
                 <Chip
@@ -314,19 +328,10 @@ export function PhoneGrid({
                   aria-pressed={filtering}
                   color="warning"
                   variant={filtering ? "filled" : "outlined"}
-                  sx={{ height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 }}
+                  sx={filterChipSx}
                 />
               )}
-              {converting > 0 && (
-                <Typography
-                  role="status"
-                  variant="body2"
-                  sx={{ display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}
-                >
-                  <CircularProgress size={14} color="inherit" />
-                  Converting {plural(converting, "HEIC photo")}…
-                </Typography>
-              )}
+              <ConvertingStatus count={converting} variant="body2" />
             </Box>
           </>
         )}
@@ -396,7 +401,7 @@ export function PhoneGrid({
               color="inherit"
               startIcon={<AddIcon />}
               onClick={onAddPhotos}
-              sx={{ minHeight: 48 }}
+              sx={{ minHeight: touchTargetLarge }}
             >
               Add photos
             </Button>
@@ -405,7 +410,7 @@ export function PhoneGrid({
               startIcon={<CloudUploadIcon />}
               disabled={blocked || incomplete.length > 0 || observations.some(isReading)}
               onClick={onUpload}
-              sx={{ flex: 1, minHeight: 48 }}
+              sx={{ flex: 1, minHeight: touchTargetLarge }}
             >
               Upload {observations.length}
             </Button>

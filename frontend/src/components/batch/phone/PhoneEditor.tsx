@@ -12,19 +12,29 @@ import NotesIcon from "@mui/icons-material/Notes";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import PlaceIcon from "@mui/icons-material/Place";
 import SearchIcon from "@mui/icons-material/Search";
-import { coverImageSx, overlayBadgeSx } from "../../common/layoutSx";
+import {
+  cardRadius,
+  coverImageSx,
+  overlayBadgeSx,
+  phoneCaptionFontSize,
+  touchTarget,
+  tallRowMinHeight,
+  touchTargetLarge,
+  panelRadius,
+} from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
   describeMissing,
   hasLocation,
   isReading,
   missingFields,
+  type BatchEdit,
   type BatchObservation,
 } from "../../../lib/batchUpload";
 import { browserUtcOffset } from "../../../lib/observationInput";
 import { formatCoordinate } from "../../../lib/utils";
 import { formatBatchDate } from "../BatchCard";
-import { shared } from "../BatchEditor";
+import { CrosspostField, shared } from "../BatchEditor";
 import { PhoneStep } from "./PhoneStep";
 
 /** The full-screen steps a field of the editor opens. */
@@ -41,6 +51,10 @@ export interface PhoneEditorProps {
   onStep: (step: EditStep) => void;
   /** Edit another observation in place of this one. */
   onGo: (id: string) => void;
+  /** Changes made in place, without a step of their own. */
+  onEdit: (patch: BatchEdit) => void;
+  /** See `BatchEditorProps.crosspostDefault`. */
+  crosspostDefault?: boolean | undefined;
   onRemove: () => void;
 }
 
@@ -72,7 +86,7 @@ function Row({
         display: "flex",
         alignItems: "center",
         gap: 1.5,
-        minHeight: 64,
+        minHeight: tallRowMinHeight,
         pl: 2,
         pr: 1.5,
         py: 1.25,
@@ -83,7 +97,9 @@ function Row({
     >
       {icon}
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{label}</Typography>
+        <Typography sx={{ fontSize: phoneCaptionFontSize, color: "text.secondary" }}>
+          {label}
+        </Typography>
         <Typography
           noWrap
           sx={{
@@ -112,6 +128,8 @@ export function PhoneEditor({
   onBack,
   onStep,
   onGo,
+  onEdit,
+  crosspostDefault,
   onRemove,
 }: PhoneEditorProps) {
   const [first] = editing;
@@ -203,7 +221,7 @@ export function PhoneEditor({
             color={nextIncomplete ? "inherit" : "primary"}
             startIcon={<CheckIcon />}
             onClick={onBack}
-            sx={{ flex: 1, minHeight: 48 }}
+            sx={{ flex: 1, minHeight: touchTargetLarge }}
           >
             Done
           </Button>
@@ -212,7 +230,7 @@ export function PhoneEditor({
               variant="contained"
               endIcon={<ChevronRightIcon />}
               onClick={() => onGo(nextIncomplete.id)}
-              sx={{ flex: 2, minHeight: 48 }}
+              sx={{ flex: 2, minHeight: touchTargetLarge }}
             >
               Next ({nextIncomplete.left} left)
             </Button>
@@ -222,7 +240,7 @@ export function PhoneEditor({
     >
       {single ? (
         <Box sx={{ display: "flex", gap: 1, height: 150, flexShrink: 0 }}>
-          <Box sx={{ flex: 1, minWidth: 0, borderRadius: 1.25, overflow: "hidden" }}>
+          <Box sx={{ flex: 1, minWidth: 0, borderRadius: cardRadius, overflow: "hidden" }}>
             <Box component="img" src={first.photos[0]?.previewUrl} alt="" sx={coverImageSx} />
           </Box>
           <Box sx={{ width: 96, display: "flex", flexDirection: "column", gap: 1 }}>
@@ -278,7 +296,12 @@ export function PhoneEditor({
 
       <Paper
         variant="outlined"
-        sx={{ display: "flex", flexDirection: "column", borderRadius: 1.5, overflow: "hidden" }}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: panelRadius,
+          overflow: "hidden",
+        }}
       >
         <Row
           icon={<SearchIcon />}
@@ -362,12 +385,14 @@ export function PhoneEditor({
         />
       </Paper>
 
+      <CrosspostField selected={editing} onEdit={onEdit} crosspostDefault={crosspostDefault} />
+
       {single ? (
         <Button
           color="error"
           startIcon={<DeleteOutlineIcon />}
           onClick={onRemove}
-          sx={{ alignSelf: "flex-start", minHeight: 44 }}
+          sx={{ alignSelf: "flex-start", minHeight: touchTarget }}
         >
           Remove from batch
         </Button>

@@ -188,14 +188,14 @@ pub async fn get_children_by_kingdom_name(
     path = "/api/taxa/{kingdom}/{name}/occurrences",
     tag = "taxonomy",
     params(("kingdom" = String, Path, description = "Kingdom name, e.g. `Plantae`"), ("name" = String, Path, description = "Scientific name, with spaces written as dashes (e.g. `Morus-alba`)"), TaxonOccurrenceParams),
-    security((), ("session" = [])),
+    security((), ("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "A page of occurrences", body = OccurrenceListResponse),
     )
 )]
 pub async fn get_taxon_occurrences_by_kingdom_name(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
     Path((kingdom, name)): Path<(String, String)>,
     Query(params): Query<TaxonOccurrenceParams>,
 ) -> Result<Json<OccurrenceListResponse>, AppError> {
@@ -231,7 +231,7 @@ pub async fn get_taxon_occurrences_by_kingdom_name(
     )
     .await?;
 
-    let viewer = session_did(&cookies);
+    let viewer = session_did(&state.pool, &headers).await;
     let occurrences = enrichment::enrich_occurrences(
         &state.pool,
         &state.resolver,
@@ -308,14 +308,14 @@ pub async fn get_taxon_by_id(
     path = "/api/taxa/{id}/occurrences",
     tag = "taxonomy",
     params(("id" = String, Path, description = "GBIF taxon id (`gbif:2878688` or `2878688`), or a scientific name"), TaxonOccurrenceParams),
-    security((), ("session" = [])),
+    security((), ("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "A page of occurrences", body = OccurrenceListResponse),
     )
 )]
 pub async fn get_taxon_occurrences_by_id(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
     Path(id): Path<String>,
     Query(params): Query<TaxonOccurrenceParams>,
 ) -> Result<Json<OccurrenceListResponse>, AppError> {
@@ -349,7 +349,7 @@ pub async fn get_taxon_occurrences_by_id(
     )
     .await?;
 
-    let viewer = session_did(&cookies);
+    let viewer = session_did(&state.pool, &headers).await;
     let occurrences = enrichment::enrich_occurrences(
         &state.pool,
         &state.resolver,

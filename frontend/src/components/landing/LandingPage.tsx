@@ -4,6 +4,7 @@ import { Explore, GitHub, Schema } from "@mui/icons-material";
 import { useAppDispatch } from "../../store";
 import { openLoginModal } from "../../store/uiSlice";
 import { Logo } from "../common/Logo";
+import { panelTitleSx } from "../common/layoutSx";
 
 const features = [
   {
@@ -115,7 +116,7 @@ export function LandingPage() {
               }}
             >
               <CardContent>
-                <Typography variant="h6" component="h2" sx={{ mb: 0.5, fontWeight: 700 }}>
+                <Typography variant="h6" component="h2" sx={{ ...panelTitleSx, mb: 0.5 }}>
                   {feature.title}
                 </Typography>
                 <Typography

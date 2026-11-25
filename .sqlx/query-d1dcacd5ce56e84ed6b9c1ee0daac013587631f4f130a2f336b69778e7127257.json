@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT NOT EXISTS (\n            SELECT 1 FROM UNNEST($1::text[]) AS awaited(uri)\n            WHERE NOT EXISTS (SELECT 1 FROM occurrences WHERE uri = awaited.uri)\n              AND NOT EXISTS (SELECT 1 FROM identifications WHERE uri = awaited.uri)\n              AND NOT EXISTS (SELECT 1 FROM remarks WHERE uri = awaited.uri)\n        ) as \"indexed!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "indexed!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d1dcacd5ce56e84ed6b9c1ee0daac013587631f4f130a2f336b69778e7127257"
+}

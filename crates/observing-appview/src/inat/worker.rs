@@ -36,6 +36,15 @@ use crate::state::AppState;
 /// retrying can't fix is reported at once (see [`InatError::permanent`]).
 const MAX_ATTEMPTS: i32 = 4;
 
+/// How long a cross-post queued with its occurrence waits before checking on
+/// the ingester again. Waiting doesn't use up attempts (see
+/// [`observing_db::crossposts::defer`]).
+const INGESTER_RECHECK: chrono::Duration = chrono::Duration::seconds(15);
+
+/// Checks on the ingester before giving up: about ten minutes, where it
+/// usually takes seconds.
+const MAX_WAITS: i32 = 40;
+
 /// How a run ended.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Drained {
@@ -56,6 +65,17 @@ pub async fn run_pending(
     inat: &Inat,
     deadline: Option<Instant>,
 ) -> Result<Drained, sqlx::Error> {
+    // Jobs run oldest first, so a big batch holds up everyone queued after it;
+    // this shows how long that gets.
+    let stats = observing_db::crossposts::queue_stats(&state.pool, SERVICE).await?;
+    info!(
+        pending = stats.pending,
+        oldest_secs = stats
+            .oldest
+            .map(|oldest| (chrono::Utc::now() - oldest).num_seconds()),
+        "Cross-posting to iNaturalist"
+    );
+
     loop {
         if deadline.is_some_and(|d| Instant::now() >= d) {
             return Ok(Drained::Deadline);
@@ -68,34 +88,98 @@ pub async fn run_pending(
             return Ok(Drained::All);
         };
 
-        let outcome = match crosspost(state, inat, &job).await {
-            Ok(()) => {
-                info!(uri = %job.occurrence_uri, "Cross-posted occurrence to iNaturalist");
-                observing_db::crossposts::mark_synced(&state.pool, &job.occurrence_uri, SERVICE)
-                    .await
-            }
-            Err(e) => {
-                warn!(
+        let outcome = match ingested(state, &job).await {
+            Ok(Ingested::NotYet) => {
+                info!(
                     uri = %job.occurrence_uri,
-                    attempt = job.attempts,
-                    permanent = e.permanent,
-                    error = %e,
-                    "Cross-post to iNaturalist failed"
+                    waits = job.waits + 1,
+                    "Waiting for the ingester before cross-posting"
                 );
-                observing_db::crossposts::record_failure(
+                observing_db::crossposts::defer(
                     &state.pool,
                     &job.occurrence_uri,
                     SERVICE,
-                    &e.message,
-                    // Zero attempts allowed: fail now instead of retrying.
-                    if e.permanent { 0 } else { MAX_ATTEMPTS },
+                    INGESTER_RECHECK,
                 )
                 .await
             }
+            Ok(Ingested::Ready) => record(state, &job, crosspost(state, inat, &job).await).await,
+            Err(e) => record(state, &job, Err(e)).await,
         };
         if let Err(e) = outcome {
             warn!(uri = %job.occurrence_uri, error = %e, "Failed to record cross-post outcome");
         }
+    }
+}
+
+/// Record how an attempt at `job` went.
+async fn record(
+    state: &AppState,
+    job: &CrosspostRow,
+    result: Result<(), InatError>,
+) -> Result<(), sqlx::Error> {
+    match result {
+        Ok(()) => {
+            info!(uri = %job.occurrence_uri, "Cross-posted occurrence to iNaturalist");
+            observing_db::crossposts::mark_synced(&state.pool, &job.occurrence_uri, SERVICE).await
+        }
+        Err(e) => {
+            warn!(
+                uri = %job.occurrence_uri,
+                attempt = job.attempts,
+                permanent = e.permanent,
+                error = %e,
+                "Cross-post to iNaturalist failed"
+            );
+            observing_db::crossposts::record_failure(
+                &state.pool,
+                &job.occurrence_uri,
+                SERVICE,
+                &e.message,
+                // Zero attempts allowed: fail now instead of retrying.
+                if e.permanent { 0 } else { MAX_ATTEMPTS },
+            )
+            .await
+        }
+    }
+}
+
+/// Whether the ingester has indexed what a job waits for.
+#[derive(Debug, PartialEq, Eq)]
+enum Ingested {
+    Ready,
+    NotYet,
+}
+
+/// Check on the records a job queued with its occurrence waits for:
+/// everything [`crosspost`] reads comes from what the ingester has indexed,
+/// and posting without the owner's identification would post no taxon, for
+/// good.
+async fn ingested(state: &AppState, job: &CrosspostRow) -> Result<Ingested, InatError> {
+    if job.awaits_uris.is_empty() {
+        return Ok(Ingested::Ready);
+    }
+    let indexed = observing_db::crossposts::all_indexed(&state.pool, &job.awaits_uris)
+        .await
+        .map_err(database)?;
+    let ingested = after_check(indexed, job.waits)?;
+    if ingested == Ingested::Ready {
+        observing_db::crossposts::clear_awaits(&state.pool, &job.occurrence_uri, SERVICE)
+            .await
+            .map_err(database)?;
+    }
+    Ok(ingested)
+}
+
+/// What to do with a job, given whether what it waits for is `indexed` and
+/// how many times it has `waited` already.
+fn after_check(indexed: bool, waited: i32) -> Result<Ingested, InatError> {
+    if indexed {
+        Ok(Ingested::Ready)
+    } else if waited + 1 >= MAX_WAITS {
+        Err(not_indexed_in_time())
+    } else {
+        Ok(Ingested::NotYet)
     }
 }
 
@@ -273,6 +357,12 @@ fn unlinked() -> InatError {
     InatError::permanent("The iNaturalist account is no longer linked")
 }
 
+/// Shown once the cross-post has failed, so it says what went wrong rather
+/// than what is happening.
+fn not_indexed_in_time() -> InatError {
+    InatError::permanent("observ.ing hadn't finished saving the observation in time")
+}
+
 fn gone() -> InatError {
     InatError::permanent("The observation is no longer on observ.ing")
 }
@@ -324,6 +414,21 @@ mod tests {
         let error = pds("link the observation on the record", AppError::Unauthorized);
         assert!(error.message.contains("log in again"), "{error}");
         assert!(error.permanent);
+    }
+
+    #[test]
+    fn a_job_runs_once_what_it_waits_for_is_indexed() {
+        assert_eq!(after_check(true, 0).unwrap(), Ingested::Ready);
+        assert_eq!(after_check(true, MAX_WAITS).unwrap(), Ingested::Ready);
+    }
+
+    #[test]
+    fn a_job_waits_for_the_ingester_and_then_gives_up() {
+        assert_eq!(after_check(false, 0).unwrap(), Ingested::NotYet);
+        assert_eq!(after_check(false, MAX_WAITS - 2).unwrap(), Ingested::NotYet);
+        let error = after_check(false, MAX_WAITS - 1).unwrap_err();
+        assert!(error.permanent);
+        assert!(error.message.contains("in time"), "{error}");
     }
 
     #[test]

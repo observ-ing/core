@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PhoneStart } from "./PhoneStart";
 import { phoneFrame } from "./phoneStoryFixtures";
+import { ALICE_USER } from "../../../../.storybook/fixtures";
+import { lowPdsUploadLimitHandler } from "../../../../.storybook/handlers";
 
 const meta = {
   title: "Batch/Phone/PhoneStart",
@@ -20,3 +22,11 @@ export const Empty: Story = {};
 export const LocationStripped: Story = { args: { stripsLocation: true } };
 
 export const ConvertingHeic: Story = { args: { converting: 3 } };
+
+/** A viewer whose PDS accepts smaller photos than the lexicon allows. */
+export const LowLimitPds: Story = {
+  parameters: {
+    storeOptions: { preloadedState: { auth: { user: ALICE_USER, isLoading: false } } },
+    msw: { handlers: [lowPdsUploadLimitHandler] },
+  },
+};

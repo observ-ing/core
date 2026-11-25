@@ -392,7 +392,7 @@ export function LocationPicker({
         renderOption={(props, option) => {
           const { key, ...otherProps } = props;
           return (
-            <Box component="li" key={key} {...otherProps} sx={{ fontSize: "0.875rem" }}>
+            <Box component="li" key={key} {...otherProps} sx={{ typography: "body2" }}>
               {option.display_name}
             </Box>
           );
@@ -488,7 +488,7 @@ export function LocationPicker({
             }}
             sx={{
               "& .MuiSlider-markLabel": {
-                fontSize: "0.75rem",
+                typography: "caption",
               },
               ...(uncertaintyMixed ? { "& .MuiSlider-thumb": { opacity: 0.4 } } : {}),
             }}

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse } from "msw";
 import { Box } from "@mui/material";
 import { TaxonSearchBox } from "./TaxonSearchBox";
-import type { TaxaResult } from "../../services/types";
+import type { TaxaResult, TaxaSearchResponse } from "../../services/types";
 
 const SAMPLE_RESULTS: TaxaResult[] = [
   {
@@ -56,7 +56,9 @@ export const WithResults: Story = {
   parameters: {
     msw: {
       handlers: [
-        http.get("/api/taxa/search", () => HttpResponse.json({ results: SAMPLE_RESULTS })),
+        http.get("/api/taxa/search", () =>
+          HttpResponse.json({ results: SAMPLE_RESULTS } satisfies TaxaSearchResponse),
+        ),
       ],
     },
   },

@@ -3,6 +3,7 @@ import { http, HttpResponse, delay } from "msw";
 import { Routes, Route } from "react-router-dom";
 import { TaxonExplorer } from "./TaxonExplorer";
 import { OAK_TAXON_DETAIL, OAK_OBSERVATION, FERN_OBSERVATION } from "../../../.storybook/fixtures";
+import type { FeedResponse } from "../../services/types";
 
 const meta = {
   title: "Taxon/TaxonExplorer",
@@ -32,8 +33,7 @@ export const Loaded: Story = {
         http.get("/api/taxa/:kingdom/:name/occurrences", () =>
           HttpResponse.json({
             occurrences: [OAK_OBSERVATION, FERN_OBSERVATION],
-            cursor: null,
-          }),
+          } satisfies FeedResponse),
         ),
         http.get("/api/taxa/:kingdom/:name/children", () => HttpResponse.json([])),
       ],
@@ -64,7 +64,7 @@ export const Loading: Story = {
         }),
         http.get("/api/taxa/:kingdom/:name/occurrences", async () => {
           await delay("infinite");
-          return HttpResponse.json({ occurrences: [], cursor: null });
+          return HttpResponse.json({ occurrences: [] } satisfies FeedResponse);
         }),
         http.get("/api/taxa/:kingdom/:name/children", () => HttpResponse.json([])),
       ],

@@ -6,7 +6,7 @@ test.describe("Lexicons page", () => {
     await expect(page.getByRole("heading", { name: "Project Lexicons" })).toBeVisible();
     // At least one project lexicon card should render (not an empty list)
     const cards = page.locator(".MuiCard-root");
-    await expect(cards.first()).toBeVisible({ timeout: 10000 });
+    await expect(cards.first()).toBeVisible({ timeout: 10_000 });
     const count = await cards.count();
     expect(count).toBeGreaterThanOrEqual(1);
   });

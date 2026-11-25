@@ -34,7 +34,7 @@ export function Breadcrumbs({ items, sx }: BreadcrumbsProps) {
           alignItems: "center",
           flexWrap: "wrap",
           gap: 0.75,
-          fontSize: "0.78rem",
+          typography: "caption",
           color: "text.disabled",
         },
         ...(Array.isArray(sx) ? sx : [sx]),

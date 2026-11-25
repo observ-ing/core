@@ -20,7 +20,6 @@ import {
   alpha,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   LinearProgress,
   Link as MuiLink,
@@ -43,7 +42,8 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { trackSubmission } from "../../store/pendingSlice";
 import { submitObservation } from "../../services/api";
 import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
-import { useUserPreferences } from "../../lib/query/hooks";
+import { useInatAccount, useMaxPhotoSize, useUserPreferences } from "../../lib/query/hooks";
+import { defaultCrosspost } from "../../lib/crosspost";
 import { useToast } from "../../hooks/useToast";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useBatchLayout } from "../../hooks/useBatchLayout";
@@ -66,7 +66,7 @@ import {
 } from "../../lib/batchUpload";
 import { readPhotoExif } from "../../lib/exif";
 import { isHeic } from "../../lib/heic";
-import { IMAGE_INPUT_ACCEPT, MAX_IMAGES } from "../../lib/imageSelection";
+import { IMAGE_INPUT_ACCEPT, MAX_IMAGES, formatMegabytes } from "../../lib/imageSelection";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
 import { pickPhotos } from "../../lib/photoPicker";
 import { warmSpeciesId } from "../../lib/speciesIdWarmup";
@@ -75,8 +75,10 @@ import { BatchCard, KEEPS_SELECTION, type CardDropState } from "./BatchCard";
 import { useMarqueeSelection } from "./useMarqueeSelection";
 import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
+import { ConvertingStatus } from "./ConvertingStatus";
 import { PhoneBatch } from "./phone/PhoneBatch";
 import { PhoneLocationStep } from "./phone/PhoneLocationStep";
+import { pageTitleSx, panelTitleSx, touchTarget } from "../common/layoutSx";
 
 /** Observations sent at once. Each request carries its photos, so keep it low. */
 const UPLOAD_CONCURRENCY = 3;
@@ -151,7 +153,7 @@ function ToolbarButton({
       color="inherit"
       size={touch ? "medium" : "small"}
       startIcon={icon}
-      sx={touch ? { minHeight: 44 } : {}}
+      sx={touch ? { minHeight: touchTarget } : {}}
       {...props}
     >
       {children}
@@ -168,7 +170,15 @@ export function BatchUploadPage() {
   const user = useAppSelector((s) => s.auth.user);
   const isAuthLoading = useAppSelector((s) => s.auth.isLoading);
   const preferences = useUserPreferences();
+  const maxPhotoSize = useMaxPhotoSize();
   const license = preferences.data?.defaultLicense ?? DEFAULT_LICENSE;
+  const inatLogin = useInatAccount().data?.login;
+  // Whether an observation the user hasn't decided about is posted to
+  // iNaturalist, when they have an account linked. Every observation here has
+  // a photo, so one default covers the whole batch.
+  const crosspostDefault = inatLogin
+    ? defaultCrosspost(preferences.data, { photoCount: 1 })
+    : undefined;
   const { touch, phone, touchDrag } = useBatchLayout();
 
   const [state, dispatch] = useReducer(batchReducer, initialBatchState);
@@ -306,7 +316,11 @@ export function BatchUploadPage() {
     const cardsNow = latest.current.observations;
     // A card removed in the meantime leaves its photos to start their own.
     const into = target && cardsNow.find((o) => o.id === target.id);
-    const { accepted, skipped: skippedFiles } = vetBatchFiles(dropped, unsentPhotoCount(cardsNow));
+    const { accepted, skipped: skippedFiles } = vetBatchFiles(
+      dropped,
+      unsentPhotoCount(cardsNow),
+      maxPhotoSize.bytes,
+    );
     if (into && into.photos.length + accepted.length > MAX_IMAGES) {
       toast.error(`An observation holds up to ${MAX_IMAGES} photos`);
       return;
@@ -382,7 +396,11 @@ export function BatchUploadPage() {
           })),
         );
         const input = toObservationInput(observation, license, images);
-        const result = await submitObservation(input);
+        const result = await submitObservation(
+          crosspostDefault === undefined
+            ? input
+            : { ...input, crosspostToInaturalist: observation.crosspost ?? crosspostDefault },
+        );
         if (user) {
           prependOccurrence(
             makeTombstoneOccurrence({
@@ -704,6 +722,7 @@ export function BatchUploadPage() {
           dispatch={dispatch}
           onChoosePhotos={choosePhotos}
           onUpload={(targets) => void upload(targets)}
+          crosspostDefault={crosspostDefault}
           onCancelUpload={cancelUpload}
           onRemove={remove}
           onRemoveSelected={removeSelected}
@@ -758,7 +777,7 @@ export function BatchUploadPage() {
             mb: 2,
           }}
         >
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, flex: "1 1 240px" }}>
+          <Typography variant="h5" component="h1" sx={{ ...pageTitleSx, flex: "1 1 240px" }}>
             Batch upload
           </Typography>
           {uploading ? (
@@ -792,15 +811,7 @@ export function BatchUploadPage() {
                   ? `${uploadedCount} of ${total} uploaded`
                   : `${plural(observations.length, "observation")}, ${plural(photoCount, "photo")}`}
               </Typography>
-              {converting > 0 && (
-                <Typography
-                  role="status"
-                  sx={{ display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}
-                >
-                  <CircularProgress size={16} color="inherit" />
-                  Converting {plural(converting, "HEIC photo")}…
-                </Typography>
-              )}
+              <ConvertingStatus count={converting} />
               {failedCount > 0 && (
                 <Typography
                   sx={{
@@ -878,7 +889,7 @@ export function BatchUploadPage() {
         {cards.length === 0 ? (
           <Box sx={[dropZoneSx, { minHeight: 360 }]}>
             <FileUploadIcon fontSize="large" />
-            <Typography variant="h6" component="h2" sx={{ color: "text.primary", fontWeight: 700 }}>
+            <Typography variant="h6" component="h2" sx={{ ...panelTitleSx, color: "text.primary" }}>
               Drag photos here
             </Typography>
             <Typography sx={{ maxWidth: 480 }}>
@@ -889,7 +900,8 @@ export function BatchUploadPage() {
               Browse files
             </Button>
             <Typography variant="body2">
-              JPEG, PNG, WebP, or HEIC. 10 MB each, up to {MAX_BATCH_PHOTOS} photos.
+              JPEG, PNG, WebP, or HEIC. {formatMegabytes(maxPhotoSize.bytes)} each
+              {maxPhotoSize.limitedByPds && " (set by your PDS)"}, up to {MAX_BATCH_PHOTOS} photos.
             </Typography>
           </Box>
         ) : (
@@ -1073,6 +1085,7 @@ export function BatchUploadPage() {
                   touchDrag={touchDrag}
                   // A small map in a scrolling panel is hard to pan by touch.
                   {...(touch ? { onExpandMap: () => setMapExpanded(true) } : {})}
+                  crosspostDefault={crosspostDefault}
                 />
               </Box>
             )}

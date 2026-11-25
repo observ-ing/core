@@ -140,9 +140,10 @@ fn is_heif(bytes: &[u8]) -> bool {
     let box_len = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize;
     let end = box_len.clamp(12, bytes.len());
     // Major brand at 8..12, then a minor version, then the compatible brands.
-    std::iter::once(&bytes[8..12])
-        .chain(bytes.get(16..end).unwrap_or_default().chunks_exact(4))
-        .any(|brand| BRANDS.iter().any(|b| b.as_slice() == brand))
+    let (compatible, _) = bytes.get(16..end).unwrap_or_default().as_chunks::<4>();
+    std::iter::once(&[bytes[8], bytes[9], bytes[10], bytes[11]])
+        .chain(compatible)
+        .any(|brand| BRANDS.contains(&brand))
 }
 
 /// The JPEG `heif-convert` produced for the primary image.

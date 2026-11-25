@@ -1,4 +1,4 @@
-import type { Page, Route } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import type { TaxaResult } from "../../src/bindings/TaxaResult";
 
 /** Canned taxa results keyed by query substring (lowercase). */
@@ -53,17 +53,13 @@ function findResults(query: string): TaxaResult[] {
 /**
  * Intercepts /api/taxa/search and returns typed fixture data.
  * The fixtures are typed against the Rust-generated TaxaResult binding,
- * so `npx tsc -p e2e/tsconfig.json` will catch shape mismatches when
+ * so `npx tsc -p frontend/tests/tsconfig.json` will catch shape mismatches when
  * the backend changes.
  */
 export async function mockTaxaSearchRoute(page: Page) {
-  await page.route("**/api/taxa/search*", (route: Route) => {
+  await page.route("**/api/taxa/search*", (route) => {
     const url = new URL(route.request().url());
     const query = url.searchParams.get("q") || "";
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ results: findResults(query) }),
-    });
+    return route.fulfill({ json: { results: findResults(query) } });
   });
 }

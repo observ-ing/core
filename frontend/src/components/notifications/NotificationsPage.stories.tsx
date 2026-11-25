@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse, delay } from "msw";
 import { NotificationsPage } from "./NotificationsPage";
 import { BOB_PROFILE, OAK_OBSERVATION } from "../../../.storybook/fixtures";
-import type { Notification } from "../../services/types";
+import type { Notification, NotificationsResponse } from "../../services/types";
 
 const NOTIFICATIONS: Notification[] = [
   {
@@ -51,7 +51,9 @@ export const Populated: Story = {
   parameters: {
     msw: {
       handlers: [
-        http.get("/api/notifications", () => HttpResponse.json({ notifications: NOTIFICATIONS })),
+        http.get("/api/notifications", () =>
+          HttpResponse.json({ notifications: NOTIFICATIONS } satisfies NotificationsResponse),
+        ),
       ],
     },
   },
@@ -60,7 +62,11 @@ export const Populated: Story = {
 export const Empty: Story = {
   parameters: {
     msw: {
-      handlers: [http.get("/api/notifications", () => HttpResponse.json({ notifications: [] }))],
+      handlers: [
+        http.get("/api/notifications", () =>
+          HttpResponse.json({ notifications: [] } satisfies NotificationsResponse),
+        ),
+      ],
     },
   },
 };
@@ -71,7 +77,7 @@ export const Loading: Story = {
       handlers: [
         http.get("/api/notifications", async () => {
           await delay("infinite");
-          return HttpResponse.json({ notifications: [] });
+          return HttpResponse.json({ notifications: [] } satisfies NotificationsResponse);
         }),
       ],
     },

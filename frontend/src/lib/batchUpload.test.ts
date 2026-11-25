@@ -218,6 +218,23 @@ describe("combining", () => {
     expect(state.selected).toEqual(["o1"]);
   });
 
+  it("keeps the target's choice about iNaturalist, or takes the donor's", () => {
+    const combinedChoice = (target: boolean | null) =>
+      run(
+        [
+          ...(target === null
+            ? []
+            : [{ type: "edit", patch: { crosspost: target }, ids: ["o1"] } as const]),
+          { type: "edit", patch: { crosspost: true }, ids: ["o2"] },
+          { type: "movePhotos", photoIds: ["b"], targetId: "o1" },
+        ],
+        batchOf("a", "b"),
+      ).observations[0]?.crosspost;
+
+    expect(combinedChoice(false)).toBe(false);
+    expect(combinedChoice(null)).toBe(true);
+  });
+
   it("fills a target's missing date and location from the dragged card", () => {
     const state = run([
       { type: "addPhotos", photos: [photo("a", EMPTY_EXIF), photo("b")] },
@@ -273,7 +290,10 @@ describe("splitting", () => {
       { type: "addPhotos", photos: [photo("a"), photo("b", EMPTY_EXIF), photo("c")] },
       { type: "selectAll", ids: ["o1", "o2", "o3"] },
       { type: "combineSelected" },
-      { type: "edit", patch: { remarks: "shared", taxon: { name: "Quercus" } } },
+      {
+        type: "edit",
+        patch: { remarks: "shared", crosspost: false, taxon: { name: "Quercus" } },
+      },
     ]);
 
   it("gives a photo dragged out its own observation built only from its EXIF", () => {
@@ -281,7 +301,8 @@ describe("splitting", () => {
 
     expect(photoIds(state)).toEqual([["a", "c"], ["b"]]);
     const fresh = state.observations[1];
-    expect(fresh).toMatchObject({ date: "", latitude: null, remarks: "" });
+    // It follows the user's preference about iNaturalist again, too.
+    expect(fresh).toMatchObject({ date: "", latitude: null, remarks: "", crosspost: null });
     expect(fresh?.taxon.name).toBe("");
     expect(fresh && missingFields(fresh)).toEqual(["date", "location"]);
     expect(state.selected).toEqual([fresh?.id]);
@@ -576,6 +597,16 @@ describe("vetBatchFiles", () => {
     const result = vetBatchFiles([{ name: "IMG_5002.HEIC", file: converted }], 0);
 
     expect(result.skipped).toEqual([{ name: "IMG_5002.HEIC", reason: "Larger than 10 MB" }]);
+  });
+
+  it("measures photos against the viewer's limit when their PDS sets a lower one", () => {
+    const result = vetBatchFiles(
+      [asDropped(imageFile("6mb.jpg", { size: 6_000_000 }))],
+      0,
+      5_242_880,
+    );
+
+    expect(result.skipped).toEqual([{ name: "6mb.jpg", reason: "Larger than 5.2 MB" }]);
   });
 });
 

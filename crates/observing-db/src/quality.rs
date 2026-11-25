@@ -214,6 +214,7 @@ mod tests {
                 },
                 alt: None,
                 license: None,
+                media_uri: None,
             })
             .collect();
         serde_json::to_value(entries).unwrap()

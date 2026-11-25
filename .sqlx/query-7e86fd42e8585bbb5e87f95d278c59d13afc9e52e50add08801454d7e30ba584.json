@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM appview.app_sessions WHERE token_hash = $1 RETURNING did",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "did",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "app_sessions",
+            "name": "did"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7e86fd42e8585bbb5e87f95d278c59d13afc9e52e50add08801454d7e30ba584"
+}

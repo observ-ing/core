@@ -11,10 +11,12 @@
  *      state or a previous run's.
  *   3. Run the Playwright dev-env config (logs in via the local PDS, creates an
  *      observation, asserts it appears).
- *   4. Tear everything down.
+ *   4. Validate every record the run wrote against lexicons/ (see
+ *      validate-devenv-records.ts).
+ *   5. Tear everything down.
  *
  * Prereqs: Postgres running (same server as the normal stack; `psql` on PATH),
- * and the `tap` binary on PATH. Run:  npm run test:e2e:devenv
+ * and the `tap` and `goat` binaries on PATH. Run:  npm run test:e2e:devenv
  */
 
 import { type ChildProcess, spawn } from "node:child_process";
@@ -25,6 +27,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 import { bootDevEnv, type DevEnv, devEnvVars } from "../frontend/tests/dev-env/network";
+import { validateWrittenRecords } from "./validate-devenv-records";
 
 const ROOT = resolve(fileURLToPath(import.meta.url), "../..");
 // The normal stack plus the dev-env overlay (later files override earlier ones).
@@ -93,13 +96,13 @@ async function portInUse(port: number): Promise<boolean> {
 }
 
 async function preflight(): Promise<void> {
-  const bins = ["process-compose", "tap", "psql"];
+  const bins = ["process-compose", "tap", "psql", "goat"];
   const present = await Promise.all(bins.map(onPath));
   const missing = bins.filter((_, i) => !present[i]);
   if (missing.length) {
     throw new Error(
       `Missing on PATH: ${missing.join(", ")}. See docs/development.md ` +
-        "(process-compose; scripts/install-tap.sh; the Postgres client).",
+        "(process-compose; scripts/install-tap.sh; the Postgres client; goat).",
     );
   }
 
@@ -317,6 +320,12 @@ async function main() {
     const code = await exitCode(pw);
     console.log(`[e2e-devenv] Playwright exited ${code}`);
     process.exitCode = code;
+
+    // Runs even when Playwright failed: an invalid record may be why.
+    console.log("[e2e-devenv] validating written records against lexicons/...");
+    if (!(await validateWrittenRecords(dev, join(ROOT, "lexicons")))) {
+      process.exitCode ||= 1;
+    }
   } finally {
     // pid is undefined if process-compose never spawned; there's nothing to stop.
     if (compose?.pid !== undefined && compose.exitCode === null && compose.signalCode === null) {

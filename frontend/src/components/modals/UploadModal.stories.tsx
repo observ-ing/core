@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { UploadModal } from "./UploadModal";
 import { ALICE_USER, FERN_OBSERVATION, OAK_OBSERVATION } from "../../../.storybook/fixtures";
+import { lowPdsUploadLimitHandler } from "../../../.storybook/handlers";
 
 const meta = {
   title: "Modals/UploadModal",
@@ -43,6 +44,22 @@ export const NewObservation: Story = {
         ui: { ...baseUiState, uploadModalOpen: true },
       },
     },
+  },
+};
+
+/**
+ * A viewer whose PDS accepts smaller photos than the lexicon allows: the
+ * caption states the PDS's limit, and photos over it are refused when picked.
+ */
+export const NewObservationOnLowLimitPds: Story = {
+  parameters: {
+    storeOptions: {
+      preloadedState: {
+        ...signedInState,
+        ui: { ...baseUiState, uploadModalOpen: true },
+      },
+    },
+    msw: { handlers: [lowPdsUploadLimitHandler] },
   },
 };
 

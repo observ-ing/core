@@ -36,6 +36,7 @@ import {
   type BatchObservation,
 } from "../../lib/batchUpload";
 import { formatCoordinate } from "../../lib/utils";
+import { monoStack } from "../../theme";
 import { setPhotoDragImage } from "./photoDragImage";
 
 /** Attribute marking an element whose clicks must not clear the page's selection. */
@@ -259,7 +260,7 @@ export function BatchCard({
               px: 0.75,
               borderRadius: 0.5,
               bgcolor: "background.paper",
-              fontFamily: "monospace",
+              fontFamily: monoStack,
               opacity: 0.9,
             }}
           >

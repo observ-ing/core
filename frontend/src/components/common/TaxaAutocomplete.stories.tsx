@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse } from "msw";
 import { Box } from "@mui/material";
 import { TaxaAutocomplete } from "./TaxaAutocomplete";
-import type { TaxaResult } from "../../services/types";
+import type { TaxaResult, TaxaSearchResponse } from "../../services/types";
 
 /**
  * Container stories: exercise the live `useAutocomplete` wiring against MSW.
@@ -55,7 +55,11 @@ export const Default: Story = {
   },
   parameters: {
     msw: {
-      handlers: [http.get("/api/taxa/search", () => HttpResponse.json(SAMPLE_RESULTS))],
+      handlers: [
+        http.get("/api/taxa/search", () =>
+          HttpResponse.json({ results: SAMPLE_RESULTS } satisfies TaxaSearchResponse),
+        ),
+      ],
     },
   },
 };

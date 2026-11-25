@@ -18,3 +18,4 @@ pub mod species_id;
 pub mod status;
 pub mod tasks;
 pub mod taxonomy;
+pub mod upload_limit;

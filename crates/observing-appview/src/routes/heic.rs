@@ -23,7 +23,7 @@ use crate::state::AppState;
     operation_id = "convert_heic_to_jpeg",
     tag = "media",
     request_body(content_type = "image/heic", description = "Raw HEIC/HEIF bytes, up to 25 MB"),
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The photo as a JPEG", content_type = "image/jpeg"),
         (status = 400, description = "Not a HEIC/HEIF image, or it could not be decoded", body = ErrorResponse),

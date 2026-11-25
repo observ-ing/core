@@ -14,7 +14,14 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { coverImageSx } from "../../common/layoutSx";
+import {
+  coverImageSx,
+  thumbnailFrameSx,
+  touchTarget,
+  touchTargetLarge,
+  panelRadius,
+  pageTitleSx,
+} from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import { isReading, missingFields, type BatchObservation } from "../../../lib/batchUpload";
 import { plural } from "../../../lib/utils";
@@ -39,7 +46,7 @@ export interface PhoneUploadListProps {
 
 function Thumbnail({ observation }: { observation: BatchObservation }) {
   return (
-    <Box sx={{ width: 56, height: 56, flexShrink: 0, borderRadius: 1, overflow: "hidden" }}>
+    <Box sx={{ width: 56, height: 56, flexShrink: 0, ...thumbnailFrameSx }}>
       <Box component="img" src={observation.photos[0]?.previewUrl} alt="" sx={coverImageSx} />
     </Box>
   );
@@ -83,7 +90,7 @@ export function PhoneUploadList({
       <>
         <Box sx={{ flexShrink: 0, px: 2, pt: 2, pb: 1.5 }}>
           <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 1 }}>
-            <Typography variant="h5" component="h1" sx={{ flex: 1, fontWeight: 700 }}>
+            <Typography variant="h5" component="h1" sx={{ flex: 1, ...pageTitleSx }}>
               Uploading
             </Typography>
             <Typography sx={{ color: "text.secondary" }}>
@@ -158,7 +165,7 @@ export function PhoneUploadList({
             color="inherit"
             startIcon={<CloseIcon />}
             onClick={onCancel}
-            sx={{ minHeight: 48 }}
+            sx={{ minHeight: touchTargetLarge }}
           >
             Cancel remaining
           </Button>
@@ -170,7 +177,7 @@ export function PhoneUploadList({
   return (
     <>
       <Box sx={{ flexShrink: 0, px: 2, pt: 2, pb: 1.5 }}>
-        <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
+        <Typography variant="h5" component="h1" sx={{ ...pageTitleSx, mb: 0.5 }}>
           {plural(observations.length, "observation")} did not upload
         </Typography>
         {uploadedCount > 0 && (
@@ -201,7 +208,7 @@ export function PhoneUploadList({
             key={o.id}
             variant="outlined"
             data-testid="batch-row"
-            sx={{ flexShrink: 0, p: 1.5, borderRadius: 1.5, borderColor: "error.main" }}
+            sx={{ flexShrink: 0, p: 1.5, borderRadius: panelRadius, borderColor: "error.main" }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
               <Thumbnail observation={o} />
@@ -228,7 +235,7 @@ export function PhoneUploadList({
                 color="inherit"
                 startIcon={<EditIcon />}
                 onClick={() => onEdit(o.id)}
-                sx={{ flex: 1, minHeight: 44 }}
+                sx={{ flex: 1, minHeight: touchTarget }}
               >
                 Edit
               </Button>
@@ -239,7 +246,7 @@ export function PhoneUploadList({
                 // An edit since the failure may have left it unfit to send.
                 disabled={blocked || !fit(o)}
                 onClick={() => onRetry(o)}
-                sx={{ flex: 1, minHeight: 44 }}
+                sx={{ flex: 1, minHeight: touchTarget }}
               >
                 Retry
               </Button>
@@ -253,7 +260,7 @@ export function PhoneUploadList({
           startIcon={<RefreshIcon />}
           disabled={blocked || !observations.every(fit)}
           onClick={onRetryAll}
-          sx={{ minHeight: 48 }}
+          sx={{ minHeight: touchTargetLarge }}
         >
           Retry all failed
         </Button>

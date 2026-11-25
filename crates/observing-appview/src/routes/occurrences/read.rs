@@ -42,7 +42,7 @@ pub struct NearbyParams {
     operation_id = "get_nearby_occurrences",
     tag = "occurrences",
     params(NearbyParams),
-    security((), ("session" = [])),
+    security((), ("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "Occurrences within the radius", body = NearbyResponse),
         (status = 400, description = "`lat` or `lng` missing", body = ErrorResponse),
@@ -50,7 +50,7 @@ pub struct NearbyParams {
 )]
 pub async fn get_nearby(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
     Query(params): Query<NearbyParams>,
 ) -> Result<Json<NearbyResponse>, AppError> {
     let lat = params
@@ -77,7 +77,7 @@ pub async fn get_nearby(
     )
     .await?;
 
-    let viewer = session_did(&cookies);
+    let viewer = session_did(&state.pool, &headers).await;
     let occurrences = enrichment::enrich_occurrences(
         &state.pool,
         &state.resolver,
@@ -119,14 +119,14 @@ pub struct FeedParams {
     operation_id = "get_occurrence_feed",
     tag = "occurrences",
     params(FeedParams),
-    security((), ("session" = [])),
+    security((), ("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "A page of occurrences", body = OccurrenceListResponse),
     )
 )]
 pub async fn get_feed(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
     Query(params): Query<FeedParams>,
 ) -> Result<Json<OccurrenceListResponse>, AppError> {
     let limit = params
@@ -142,7 +142,7 @@ pub async fn get_feed(
     )
     .await?;
 
-    let viewer = session_did(&cookies);
+    let viewer = session_did(&state.pool, &headers).await;
     let occurrences = enrichment::enrich_occurrences(
         &state.pool,
         &state.resolver,
@@ -192,7 +192,7 @@ pub struct BboxParams {
     operation_id = "get_occurrences_in_bbox",
     tag = "occurrences",
     params(BboxParams),
-    security((), ("session" = [])),
+    security((), ("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "Occurrences inside the box", body = BboxResponse),
         (status = 400, description = "A bound is missing", body = ErrorResponse),
@@ -200,7 +200,7 @@ pub struct BboxParams {
 )]
 pub async fn get_bbox(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
     Query(params): Query<BboxParams>,
 ) -> Result<Json<BboxResponse>, AppError> {
     let min_lat = params
@@ -228,7 +228,7 @@ pub async fn get_bbox(
     )
     .await?;
 
-    let viewer = session_did(&cookies);
+    let viewer = session_did(&state.pool, &headers).await;
     let occurrences = enrichment::enrich_occurrences(
         &state.pool,
         &state.resolver,
@@ -329,7 +329,7 @@ pub async fn get_geojson(
     path = "/api/occurrences/{uri}",
     tag = "occurrences",
     params(("uri" = String, Path, description = "AT URI of the occurrence (`at://...`), percent-encoded")),
-    security((), ("session" = [])),
+    security((), ("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The occurrence", body = OccurrenceDetailResponse),
         (status = 404, description = "No such occurrence", body = ErrorResponse),
@@ -337,7 +337,7 @@ pub async fn get_geojson(
 )]
 pub async fn get_occurrence(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
     Path(uri): Path<String>,
 ) -> Result<Json<OccurrenceDetailResponse>, AppError> {
     let row = observing_db::occurrences::get(&state.pool, &uri)
@@ -346,7 +346,7 @@ pub async fn get_occurrence(
 
     // The occurrence's enrichment, its identifications and its comments are
     // independent of one another, so fetch and enrich all three concurrently.
-    let viewer = session_did(&cookies);
+    let viewer = session_did(&state.pool, &headers).await;
     let (enriched, identifications, comments) = tokio::join!(
         enrichment::enrich_occurrences(
             &state.pool,

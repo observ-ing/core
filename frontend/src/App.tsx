@@ -149,7 +149,7 @@ function AppContent() {
         }}
       >
         <ErrorBoundary resetKey={location.pathname}>
-          <Suspense fallback={<CenteredSpinner sx={{ flex: 1, alignItems: "center" }} />}>
+          <Suspense fallback={<CenteredSpinner sx={{ flex: 1 }} />}>
             <Routes>
               <Route path="/" element={showLanding ? <LandingPage /> : <FeedView tab="home" />} />
               <Route path="/explore" element={<FeedView tab="explore" />} />

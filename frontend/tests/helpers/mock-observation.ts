@@ -1,4 +1,5 @@
-import type { Page, Route } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { mockJson } from "./mock-api";
 import { MOCK_TEST_USER } from "./test-users";
 import type { Occurrence, Identification, Comment, FeedResponse } from "../../src/services/types";
 
@@ -64,36 +65,23 @@ function buildMockObservationResponse(overrides: MockDetailOverrides = {}) {
  */
 export async function mockObservationDetailRoute(page: Page, overrides: MockDetailOverrides = {}) {
   const response = buildMockObservationResponse(overrides);
-  await page.route("**/api/occurrences/*", (route: Route) => {
-    if (route.request().method() === "GET") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(response),
-      });
-    }
-    return route.continue();
-  });
+  await mockJson(page, "**/api/occurrences/*", response, { method: "GET" });
   return response;
+}
+
+/** Sets up route mocks for all feed endpoints, answering with `occurrences`. */
+export async function mockFeed(page: Page, occurrences: Occurrence[]) {
+  const feed: FeedResponse = { occurrences };
+  for (const url of ["**/api/feeds/home*", "**/api/feeds/explore*", "**/api/occurrences/feed*"]) {
+    await mockJson(page, url, feed);
+  }
 }
 
 /**
  * Sets up route mocks for all feed endpoints with a single owned observation.
  */
 export async function mockOwnObservationFeed(page: Page, overrides: Partial<Occurrence> = {}) {
-  const feedResponse: FeedResponse = {
-    occurrences: [buildMockObservation(overrides)],
-  };
-  const body = JSON.stringify(feedResponse);
-  const handler = (route: Route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body,
-    });
-  await page.route("**/api/feeds/home*", handler);
-  await page.route("**/api/feeds/explore*", handler);
-  await page.route("**/api/occurrences/feed*", handler);
+  await mockFeed(page, [buildMockObservation(overrides)]);
 }
 
 /**
@@ -102,10 +90,7 @@ export async function mockOwnObservationFeed(page: Page, overrides: Partial<Occu
  * the explore feed.
  */
 export async function navigateToMockedDetail(page: Page, overrides: MockDetailOverrides = {}) {
-  await mockObservationDetailRoute(page, {
-    uri: `at://${MOCK_OBS_DID}/bio.lexicons.temp.v0-1.occurrence/${MOCK_OBS_RKEY}`,
-    ...overrides,
-  });
+  await mockObservationDetailRoute(page, overrides);
   await page.goto(MOCK_OBS_URL);
   await page.getByText("Observed").waitFor({ timeout: 15_000 });
 }

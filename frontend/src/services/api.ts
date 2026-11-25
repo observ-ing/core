@@ -1,8 +1,10 @@
 import type {
   User,
+  AuthResponse,
   FeedResponse,
   Occurrence,
   TaxaResult,
+  TaxaSearchResponse,
   TaxonDetail,
   GeoJSONFeatureCollection,
   FeedFilters,
@@ -13,6 +15,7 @@ import type {
   OccurrenceDetailResponse,
   ValidateResponse,
   UserPreferencesResponse,
+  UploadLimitResponse,
   UpdatePreferencesRequest,
   ExternalRecord,
 } from "./types";
@@ -20,6 +23,7 @@ import type { InatAccountResponse } from "../bindings/InatAccountResponse";
 import type { InatAuthorizeResponse } from "../bindings/InatAuthorizeResponse";
 import type { CrosspostStatusResponse } from "../bindings/CrosspostStatusResponse";
 import type { CreateCrosspostRequest } from "../bindings/CreateCrosspostRequest";
+import type { RankFallback } from "../bindings/RankFallback";
 
 export const API_BASE = import.meta.env["VITE_API_URL"] || "";
 const DEFAULT_PAGE_SIZE = "20";
@@ -73,7 +77,7 @@ export async function checkAuth(): Promise<User | null> {
       credentials: "include",
     });
     if (response.ok) {
-      const data = await response.json();
+      const data: AuthResponse = await response.json();
       return data.user ?? null;
     }
     return null;
@@ -210,7 +214,7 @@ export async function searchTaxa(query: string): Promise<TaxaResult[]> {
   const response = await fetch(`${API_BASE}/api/taxa/search?q=${encodeURIComponent(query)}`);
   if (!response.ok) return [];
 
-  const data = await response.json();
+  const data: TaxaSearchResponse = await response.json();
   return data.results || [];
 }
 
@@ -253,6 +257,8 @@ export interface ObservationInput {
   occurrenceRemarks?: string;
   eventRemarks?: string;
   images?: Array<{ data: string; mimeType: string }>;
+  /** Also post a new observation to the user's linked iNaturalist account. */
+  crosspostToInaturalist?: boolean;
   // Taxonomy fields
   taxonId?: string;
   taxonRank?: string;
@@ -474,6 +480,12 @@ export async function fetchUserPreferences(): Promise<UserPreferencesResponse> {
   });
 }
 
+export async function fetchUploadLimit(): Promise<UploadLimitResponse> {
+  return fetchApi(`${API_BASE}/api/user/upload-limit`, "Failed to load upload limit", {
+    credentials: "include",
+  });
+}
+
 export async function updateUserPreferences(
   prefs: UpdatePreferencesRequest,
 ): Promise<{ success: boolean }> {
@@ -554,8 +566,22 @@ export interface SpeciesSuggestion {
   taxonMatch?: TaxaResult;
 }
 
+/**
+ * The rank the server falls back to when no single species is confident,
+ * e.g. the genus *Bombus* when the model can't tell bumble bees apart.
+ * `confidence` is the share of the model's probability on species in this
+ * taxon, so it isn't on the same scale as a suggestion's `confidence`.
+ */
+export interface IdentifyFallback extends RankFallback {
+  commonName?: string;
+  /** Set when the name resolved to a known GBIF taxon, as for suggestions. */
+  taxonMatch?: TaxaResult;
+}
+
 export interface IdentifyResponse {
   suggestions: SpeciesSuggestion[];
+  /** Absent when a species is confident enough, or no broader rank is. */
+  fallback?: IdentifyFallback;
   modelVersion: string;
   inferenceTimeMs: number;
 }

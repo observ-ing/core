@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM appview.app_login_codes\n        WHERE code_hash = $1\n        RETURNING did, code_challenge, expires_at > NOW() AS \"live!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "did",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "app_login_codes",
+            "name": "did"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "code_challenge",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "app_login_codes",
+            "name": "code_challenge"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "live!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "e76a74d29aa2836b7cf25bf9320159a3ca500d086c3bcd87e9a8b6b7886bd8b9"
+}

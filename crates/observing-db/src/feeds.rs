@@ -51,9 +51,17 @@ pub async fn get_explore_feed(
         qb.push(")");
     }
 
-    if let Some(ref taxon) = options.taxon {
-        qb.push(" AND scientific_name ILIKE ");
-        qb.push_bind(format!("{taxon}%"));
+    if let Some(observer) = options.observer.as_deref() {
+        qb.push(" AND did = ");
+        qb.push_bind(observer.to_string());
+    }
+
+    // Match the consensus taxon or any of its ancestors, so a genus or
+    // family returns its descendants. `occurrences.scientific_name` is never
+    // populated (the occurrence record carries no taxon), so it can't be used.
+    if let Some(taxon) = options.taxon.as_deref() {
+        qb.push(" AND ");
+        push_consensus_lineage_filter(&mut qb, taxon);
     }
 
     // Filter by the consensus taxon's kingdom (via community_ids → taxa)
@@ -141,8 +149,12 @@ pub async fn get_profile_feed(
             SELECT
                 (SELECT COUNT(*) FROM occurrences WHERE did = $1),
                 (SELECT COUNT(*) FROM identifications WHERE did = $1),
-                (SELECT COUNT(DISTINCT (scientific_name, kingdom)) FROM occurrences
-                 WHERE did = $1 AND scientific_name IS NOT NULL)
+                -- Distinct consensus taxa; occurrences.scientific_name is
+                -- never populated, since occurrence records carry no taxon.
+                (SELECT COUNT(DISTINCT (ci.scientific_name, ci.kingdom))
+                 FROM community_ids ci
+                 JOIN occurrences o ON o.uri = ci.occurrence_uri
+                 WHERE o.did = $1)
             "#,
         )
         .bind(did)
@@ -404,6 +416,25 @@ fn push_consensus_rank_filter(qb: &mut QueryBuilder<Postgres>, rank_lower: &str,
     qb.push(" = ");
     qb.push_bind(taxon_name);
     qb.push(")");
+}
+
+/// Restrict the outer occurrences query to rows whose consensus taxon is
+/// `taxon_name` or descends from it, compared case-insensitively since the
+/// Explore taxon field accepts free text. Unlike
+/// [`push_consensus_rank_filter`], the rank isn't known, so every rank column
+/// is checked.
+fn push_consensus_lineage_filter(qb: &mut QueryBuilder<Postgres>, taxon_name: &str) {
+    qb.push(
+        "uri IN (SELECT ci.occurrence_uri FROM community_ids ci \
+         JOIN taxa t ON t.taxon_key = ci.accepted_taxon_key \
+         WHERE LOWER(",
+    );
+    qb.push_bind(taxon_name.to_string());
+    qb.push(
+        ") IN (LOWER(t.scientific_name), LOWER(t.species), LOWER(t.genus), \
+         LOWER(t.family), LOWER(t.\"order\"), LOWER(t.class), LOWER(t.phylum), \
+         LOWER(t.kingdom)))",
+    );
 }
 
 /// Keep only occurrences whose eventDate interval overlaps the requested

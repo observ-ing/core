@@ -11,6 +11,9 @@ use moka::future::Cache;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Semaphore;
+
+pub mod thumb;
 
 /// Default cache TTL: 24 hours, matching the previous media-proxy default.
 const DEFAULT_CACHE_TTL_SECS: u64 = 24 * 60 * 60;
@@ -21,6 +24,10 @@ const DEFAULT_MAX_CACHE_SIZE: u64 = 1024 * 1024 * 1024;
 const PDS_URL_TTL: Duration = Duration::from_secs(10 * 60);
 /// Maximum number of DIDs whose PDS URL is kept.
 const PDS_URL_CAPACITY: u64 = 10_000;
+/// How many thumbnails are decoded at once. Each decode holds a full-size
+/// pixel buffer (tens to hundreds of MB), so a grid's burst of thumbnail
+/// requests mustn't all decode in parallel.
+const MAX_CONCURRENT_THUMBNAILS: usize = 4;
 
 /// Cache + PDS-fetcher pair. Cheap to clone (everything inside is `Arc`-able
 /// or already cheap to share).
@@ -31,6 +38,8 @@ pub struct MediaCache {
     /// document (a plc.directory round trip), even for a page of images that
     /// all belong to the same account.
     pub pds_urls: Cache<String, String>,
+    /// Bounds concurrent thumbnail decodes; see [`MAX_CONCURRENT_THUMBNAILS`].
+    pub thumb_permits: Semaphore,
     pub started_at: DateTime<Utc>,
 }
 
@@ -65,14 +74,20 @@ impl MediaCache {
             tracing::error!(error = %e, "Failed to initialize media cache directory");
         }
 
-        Arc::new(Self {
+        Arc::new(Self::new(cache))
+    }
+
+    /// A media cache around an already-initialized blob cache.
+    pub fn new(cache: BlobCache) -> Self {
+        Self {
             cache,
             fetcher: BlobResolver::new(),
             pds_urls: Cache::builder()
                 .max_capacity(PDS_URL_CAPACITY)
                 .time_to_live(PDS_URL_TTL)
                 .build(),
+            thumb_permits: Semaphore::new(MAX_CONCURRENT_THUMBNAILS),
             started_at: Utc::now(),
-        })
+        }
     }
 }

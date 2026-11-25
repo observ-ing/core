@@ -110,7 +110,12 @@ pub struct AppState {
     pub media: Arc<MediaCache>,
     /// HEIC → JPEG conversion for browsers that can't decode HEIC photos.
     pub heic: Arc<HeicConverter>,
+    /// Each viewer's PDS-advertised blob upload limit, read through
+    /// describeServer.
+    pub pds_upload_limits: crate::routes::upload_limit::PdsUploadLimits,
     pub public_url: Option<String>,
+    /// Callbacks an app may have its sign-in handed back to (`Config::app_redirect_uris`).
+    pub app_redirect_uris: Vec<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
     pub hidden_dids: Vec<String>,
     /// DIDs allowed to access admin routes. When empty, admin routes return 503.
@@ -126,6 +131,14 @@ pub struct AppState {
     /// Pool as `ingester_runtime`, for task routes that write the `ingester`
     /// schema. Only on the worker.
     pub ingester_pool: Option<sqlx::PgPool>,
+}
+
+/// Lets extractors that only need the database (e.g. [`crate::auth::AuthUser`])
+/// take any state that holds a pool.
+impl axum::extract::FromRef<AppState> for PgPool {
+    fn from_ref(state: &AppState) -> Self {
+        state.pool.clone()
+    }
 }
 
 /// Create an OAuthClient.

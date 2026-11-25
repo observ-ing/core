@@ -144,6 +144,13 @@ impl Database {
         }
 
         observing_db::occurrences::upsert(&self.pool, &parsed.params).await?;
+        // Likes, identifications, and comments that arrived before this
+        // occurrence found no owner to notify; notify them now.
+        if let Err(e) =
+            observing_db::notifications::create_for_existing_references(&self.pool, did, uri).await
+        {
+            warn!(error = %e, "Failed to create notifications for existing references");
+        }
 
         Ok(())
     }

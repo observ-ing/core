@@ -1,39 +1,14 @@
-import type { Page, Route } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/mock-auth";
-import {
-  MOCK_OBS_DID,
-  MOCK_OBS_RKEY,
-  MOCK_OBS_URL,
-  mockObservationDetailRoute,
-} from "./helpers/mock-observation";
+import { MOCK_OBS_DID, MOCK_OBS_RKEY, navigateToMockedDetail } from "./helpers/mock-observation";
+import { LINKED, UNLINKED, mockAccount } from "./helpers/inat";
 import { gotoUploadStep } from "./helpers/navigation";
-import type { InatAccountResponse } from "../src/bindings/InatAccountResponse";
 import type { CrosspostStatusResponse } from "../src/bindings/CrosspostStatusResponse";
 
 // These tests never reach iNaturalist: every /api/inat/* call is mocked.
 // Linking an account in Settings is covered by inat-link.spec.ts.
 
-const LINKED: InatAccountResponse = {
-  enabled: true,
-  login: "kueda",
-  linkedAt: "2026-10-07T00:00:00Z",
-};
-const UNLINKED: InatAccountResponse = { enabled: true, login: null, linkedAt: null };
-
 const NOT_POSTED: CrosspostStatusResponse = { status: null, lastError: null, inatUrl: null };
-
-const json = (body: unknown, status = 200) => ({
-  status,
-  contentType: "application/json",
-  body: JSON.stringify(body),
-});
-
-async function mockAccount(page: Page, account: InatAccountResponse) {
-  await page.route("**/api/inat/account", (route: Route) => {
-    if (route.request().method() === "GET") return route.fulfill(json(account));
-    return route.fulfill(json({ success: true }));
-  });
-}
 
 /**
  * Mock the crosspost endpoint. GET returns `status`; POST records the call
@@ -50,20 +25,14 @@ async function mockCrosspost(
 ) {
   const calls = { posts: 0, postedUris: [] as string[] };
   let current = status;
-  await page.route("**/api/inat/crosspost/**", (route: Route) => route.fulfill(json(current)));
-  await page.route("**/api/inat/crosspost", (route: Route) => {
+  await page.route("**/api/inat/crosspost/**", (route) => route.fulfill({ json: current }));
+  await page.route("**/api/inat/crosspost", (route) => {
     calls.posts += 1;
     calls.postedUris.push(route.request().postDataJSON()?.uri);
     current = afterPost;
-    return route.fulfill(json(current, 202));
+    return route.fulfill({ status: 202, json: current });
   });
   return calls;
-}
-
-async function gotoOwnObservation(page: Page, overrides = {}) {
-  await mockObservationDetailRoute(page, overrides);
-  await page.goto(MOCK_OBS_URL);
-  await page.getByText("Observed").waitFor({ timeout: 15_000 });
 }
 
 /** The "Also recorded on" row of the Details list. */
@@ -81,7 +50,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
   }) => {
     await mockAccount(page, LINKED);
     const calls = await mockCrosspost(page, NOT_POSTED);
-    await gotoOwnObservation(page);
+    await navigateToMockedDetail(page);
 
     // With no links to list, the button stands on its own: no "Also recorded
     // on" label for something that isn't recorded anywhere else yet.
@@ -103,7 +72,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
   test("sits below links the observation already has", async ({ authenticatedPage: page }) => {
     await mockAccount(page, LINKED);
     await mockCrosspost(page, NOT_POSTED);
-    await gotoOwnObservation(page, {
+    await navigateToMockedDetail(page, {
       externalRecords: [{ uri: "https://bugguide.net/node/view/1", service: "bugguide" }],
     });
 
@@ -119,7 +88,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
       lastError: null,
       inatUrl: "https://www.inaturalist.org/observations/123",
     });
-    await gotoOwnObservation(page);
+    await navigateToMockedDetail(page);
 
     // Shown from the cross-post status, before the link has reached the record.
     await expect(alsoRecordedOn(page).getByRole("link", { name: "iNaturalist" })).toHaveAttribute(
@@ -135,7 +104,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
     const inatUrl = "https://www.inaturalist.org/observations/123";
     await mockAccount(page, LINKED);
     await mockCrosspost(page, { status: "synced", lastError: null, inatUrl });
-    await gotoOwnObservation(page, {
+    await navigateToMockedDetail(page, {
       externalRecords: [{ uri: inatUrl, service: "inaturalist" }],
     });
 
@@ -149,7 +118,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
       lastError: "iNaturalist returned 422",
       inatUrl: null,
     });
-    await gotoOwnObservation(page);
+    await navigateToMockedDetail(page);
 
     await expect(page.getByText("Couldn't post to iNaturalist")).toBeVisible();
     await expect(page.getByText("iNaturalist returned 422")).toBeVisible();
@@ -172,7 +141,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
       lastError: "Could not fetch photo bafkrei1 from your PDS",
       inatUrl,
     });
-    await gotoOwnObservation(page, {
+    await navigateToMockedDetail(page, {
       externalRecords: [{ uri: inatUrl, service: "inaturalist" }],
     });
 
@@ -189,7 +158,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
   }) => {
     await mockAccount(page, LINKED);
     await mockCrosspost(page, NOT_POSTED);
-    await gotoOwnObservation(page, {
+    await navigateToMockedDetail(page, {
       externalRecords: [{ uri: "https://inaturalist.nz/observations/9" }],
     });
 
@@ -203,7 +172,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
     const inatUrl = "https://www.inaturalist.org/observations/123";
     await mockAccount(page, LINKED);
     await mockCrosspost(page, { status: "synced", lastError: null, inatUrl });
-    await gotoOwnObservation(page, {
+    await navigateToMockedDetail(page, {
       externalRecords: [
         { uri: "https://bugguide.net/node/view/1", service: "bugguide" },
         { uri: inatUrl, service: "inaturalist" },
@@ -227,7 +196,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
   test("is not offered without a linked account", async ({ authenticatedPage: page }) => {
     await mockAccount(page, UNLINKED);
     await mockCrosspost(page, NOT_POSTED);
-    await gotoOwnObservation(page);
+    await navigateToMockedDetail(page);
 
     await expect(page.getByText("Coordinates")).toBeVisible();
     await expect(postButton(page)).toHaveCount(0);
@@ -241,7 +210,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
     // lookup must not make the detail page think the viewer can post.
     await mockAccount(page, UNLINKED);
     await mockCrosspost(page, NOT_POSTED);
-    await gotoOwnObservation(page);
+    await navigateToMockedDetail(page);
 
     await page.getByLabel("More options").first().click();
     await page.getByRole("menuitem", { name: "Edit" }).click();
@@ -256,7 +225,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
   test("is not offered on someone else's observation", async ({ authenticatedPage: page }) => {
     await mockAccount(page, LINKED);
     await mockCrosspost(page, NOT_POSTED);
-    await gotoOwnObservation(page, {
+    await navigateToMockedDetail(page, {
       observer: { did: "did:plc:someoneelse", handle: "other.test" },
     });
 
@@ -268,7 +237,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
   test("the menu has no iNaturalist item", async ({ authenticatedPage: page }) => {
     await mockAccount(page, LINKED);
     await mockCrosspost(page, NOT_POSTED);
-    await gotoOwnObservation(page);
+    await navigateToMockedDetail(page);
 
     await page.getByLabel("More options").first().click();
     await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();

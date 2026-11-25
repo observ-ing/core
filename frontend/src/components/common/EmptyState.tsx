@@ -7,7 +7,7 @@ export interface EmptyStateProps {
   message: ReactNode;
   /** Optional secondary line rendered (smaller, dimmer) below the message. */
   secondary?: ReactNode | undefined;
-  /** Optional node (e.g. an icon) rendered above the message. */
+  /** Optional icon rendered above the message; sized and dimmed by EmptyState. */
   icon?: ReactNode | undefined;
   /** Padding applied to the centering Box. Defaults to `4`. */
   p?: number | undefined;
@@ -22,7 +22,11 @@ export interface EmptyStateProps {
 export function EmptyState({ message, secondary, icon, p = 4, sx }: EmptyStateProps) {
   return (
     <Box sx={{ p, textAlign: "center", ...sx }}>
-      {icon}
+      {icon != null && (
+        <Box sx={{ mb: 1, color: "text.disabled", "& .MuiSvgIcon-root": { fontSize: 40 } }}>
+          {icon}
+        </Box>
+      )}
       <Typography sx={{ color: "text.secondary", mb: secondary ? 0.5 : 0 }}>{message}</Typography>
       {secondary != null && (
         <Typography variant="body2" sx={{ color: "text.disabled" }}>

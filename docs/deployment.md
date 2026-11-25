@@ -229,9 +229,25 @@ ORT_DYLIB_PATH=/usr/lib/libonnxruntime.so
 # Reported in /identify + /health responses. Defaults to the ViT-H build's
 # string; the live ViT-L image bakes this in via the MODEL_VERSION build-arg.
 MODEL_VERSION=bioclip-2.5-vit-h-14
+# Optional. Additive bump to in-range species' similarity (default 0.05).
+# GEO_BOOST_LAMBDA=0.05
+# Optional. Rank fallback: probability a genus/family/... needs before
+# /identify names it when no species is confident (default 0.7), and the
+# softmax scale that turns similarities into probabilities (default 100).
+# SPECIES_ROLLUP_THRESHOLD=0.7
+# SPECIES_LOGIT_SCALE=100
 ```
 
 No database access. Both `observing-species-id` and `observing-species-id-live` use this same config; they differ only in the baked model bundle and `MODEL_VERSION`.
+
+#### Tuning the rank fallback
+
+`/identify` softmaxes every species' score (similarity plus geo boost) at `SPECIES_LOGIT_SCALE`, adds the probabilities up by genus, family, order, class, phylum and kingdom, and returns the most specific taxon whose total reaches `SPECIES_ROLLUP_THRESHOLD` as `fallback`. There's no fallback when the top species reaches the threshold on its own. Both settings are read at startup, so a change takes a new revision.
+
+- **Threshold** trades specificity for precision. Raise it for broader, safer answers; lower it to name a genus more often. If the probabilities are calibrated, a fallback at threshold *t* is right at least *t* of the time.
+- **Logit scale** sets how sharp the probabilities are. 100 is BioCLIP's trained value; leave it unless a labelled set shows the probabilities are over- or under-confident. Lowering it spreads probability over more species and produces more, broader fallbacks.
+- **Geo boost interacts with both.** At scale 100, `GEO_BOOST_LAMBDA=0.05` is 5 logits, so an in-range species gets about 150 times the probability of an equally similar out-of-range one. Fallbacks with a location skew toward taxa that occur there.
+- **To pick values**, run a labelled photo set through `/identify` and, for each threshold, measure how often the fallback (or the top species, when there's no fallback) is the true taxon or one of its ancestors, against how specific the answers are. Pick the lowest threshold that keeps that accuracy where you want it. The species-id service logs `fallback_rank` and `fallback_confidence` per request, so the production mix of ranks shows up in the logs.
 
 ### Migrate Job (`postgres`)
 

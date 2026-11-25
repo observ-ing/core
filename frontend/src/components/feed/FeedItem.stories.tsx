@@ -45,7 +45,7 @@ export const Liked: Story = {
     msw: {
       handlers: [
         http.post("/api/likes", () => HttpResponse.json({ success: true })),
-        http.delete("/api/likes/*", () => HttpResponse.json({ success: true })),
+        http.delete("/api/likes", () => HttpResponse.json({ success: true })),
       ],
     },
   },

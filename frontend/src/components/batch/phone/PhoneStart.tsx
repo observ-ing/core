@@ -1,8 +1,11 @@
 // Phone layout, before any photos: what the tool does and the way in.
-import { Alert, AlertTitle, Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Alert, AlertTitle, Box, Button, Typography } from "@mui/material";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
+import { heroIconSx, pageTitleSx } from "../../common/layoutSx";
 import { MAX_BATCH_PHOTOS } from "../../../lib/batchUpload";
-import { plural } from "../../../lib/utils";
+import { formatMegabytes } from "../../../lib/imageSelection";
+import { useMaxPhotoSize } from "../../../lib/query/hooks";
+import { ConvertingStatus } from "../ConvertingStatus";
 
 export interface PhoneStartProps {
   onChoosePhotos: () => void;
@@ -16,10 +19,11 @@ export interface PhoneStartProps {
 }
 
 export function PhoneStart({ onChoosePhotos, converting, stripsLocation }: PhoneStartProps) {
+  const maxPhotoSize = useMaxPhotoSize();
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, px: 2, py: 3 }}>
       <Box>
-        <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
+        <Typography variant="h5" component="h1" sx={{ ...pageTitleSx, mb: 1 }}>
           Batch upload
         </Typography>
         <Typography sx={{ color: "text.secondary" }}>
@@ -43,7 +47,7 @@ export function PhoneStart({ onChoosePhotos, converting, stripsLocation }: Phone
           textAlign: "center",
         }}
       >
-        <PhotoLibraryIcon color="primary" sx={{ fontSize: 48 }} />
+        <PhotoLibraryIcon color="primary" sx={heroIconSx} />
         <Button
           variant="contained"
           size="large"
@@ -55,17 +59,11 @@ export function PhoneStart({ onChoosePhotos, converting, stripsLocation }: Phone
           Choose photos
         </Button>
         <Typography variant="body2" sx={{ color: "text.secondary" }}>
-          JPEG, PNG, WebP, or HEIC. 10 MB each, up to {MAX_BATCH_PHOTOS} photos per batch.
+          JPEG, PNG, WebP, or HEIC. {formatMegabytes(maxPhotoSize.bytes)} each
+          {maxPhotoSize.limitedByPds && " (set by your PDS)"}, up to {MAX_BATCH_PHOTOS} photos per
+          batch.
         </Typography>
-        {converting > 0 && (
-          <Typography
-            role="status"
-            sx={{ display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}
-          >
-            <CircularProgress size={16} color="inherit" />
-            Converting {plural(converting, "HEIC photo")}…
-          </Typography>
-        )}
+        <ConvertingStatus count={converting} />
       </Box>
       {stripsLocation && (
         <Alert severity="warning" variant="outlined">

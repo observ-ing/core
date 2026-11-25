@@ -115,7 +115,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
             gap: 1,
           }}
         >
-          <Box sx={{ fontSize: "1.1rem", minWidth: 0 }}>
+          <Box sx={{ fontSize: (theme) => theme.typography.h3.fontSize, minWidth: 0 }}>
             {species ? (
               <TaxonLink
                 name={species}

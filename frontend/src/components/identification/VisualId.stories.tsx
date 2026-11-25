@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse, delay } from "msw";
 import { Box } from "@mui/material";
 import { VisualId } from "./VisualId";
-import type { SpeciesSuggestion } from "../../services/api";
+import type { IdentifyResponse, SpeciesIdStatus, SpeciesSuggestion } from "../../services/api";
 import { resetSpeciesIdWarmupForTests } from "../../lib/speciesIdWarmup";
 
 const SUGGESTIONS: SpeciesSuggestion[] = [
@@ -66,8 +66,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const NO_SUGGESTIONS = {
+  suggestions: [],
+  modelVersion: "story",
+  inferenceTimeMs: 120,
+} satisfies IdentifyResponse;
+
 const successHandler = http.post("/api/species-id", () =>
-  HttpResponse.json({ suggestions: SUGGESTIONS }),
+  HttpResponse.json({
+    suggestions: SUGGESTIONS,
+    modelVersion: "story",
+    inferenceTimeMs: 120,
+  } satisfies IdentifyResponse),
 );
 
 export const ManualFetch: Story = {
@@ -83,6 +93,35 @@ export const AutoFetched: Story = {
   },
 };
 
+/**
+ * The oaks score too close for any one species to be confident, so the
+ * server falls back to the genus and the cards lead with *Quercus*.
+ */
+export const AutoFetchedWithFallback: Story = {
+  args: { autoFetch: true },
+  parameters: {
+    msw: {
+      handlers: [
+        http.post("/api/species-id", () =>
+          HttpResponse.json({
+            suggestions: SUGGESTIONS.map((s) => ({ ...s, confidence: 0.28 })),
+            fallback: {
+              rank: "genus",
+              scientificName: "Quercus",
+              confidence: 0.81,
+              kingdom: "Plantae",
+              family: "Fagaceae",
+              commonName: "Oaks",
+            },
+            modelVersion: "story",
+            inferenceTimeMs: 120,
+          } satisfies IdentifyResponse),
+        ),
+      ],
+    },
+  },
+};
+
 export const AutoFetchLoading: Story = {
   args: { autoFetch: true },
   parameters: {
@@ -90,7 +129,7 @@ export const AutoFetchLoading: Story = {
       handlers: [
         http.post("/api/species-id", async () => {
           await delay("infinite");
-          return HttpResponse.json({ suggestions: [] });
+          return HttpResponse.json(NO_SUGGESTIONS);
         }),
       ],
     },
@@ -104,11 +143,11 @@ export const AutoFetchColdStart: Story = {
     msw: {
       handlers: [
         http.get("/api/species-id/status", () =>
-          HttpResponse.json({ ready: false, estimatedSeconds: 20 }),
+          HttpResponse.json({ ready: false, estimatedSeconds: 20 } satisfies SpeciesIdStatus),
         ),
         http.post("/api/species-id", async () => {
           await delay("infinite");
-          return HttpResponse.json({ suggestions: [] });
+          return HttpResponse.json(NO_SUGGESTIONS);
         }),
       ],
     },
@@ -119,7 +158,7 @@ export const NoSuggestions: Story = {
   args: { autoFetch: true, quiet: true },
   parameters: {
     msw: {
-      handlers: [http.post("/api/species-id", () => HttpResponse.json({ suggestions: [] }))],
+      handlers: [http.post("/api/species-id", () => HttpResponse.json(NO_SUGGESTIONS))],
     },
   },
 };

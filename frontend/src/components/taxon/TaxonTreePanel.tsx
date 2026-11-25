@@ -6,7 +6,7 @@ import type { TaxonTreeItem } from "./TaxonExplorer";
 import { TaxonSearchBox } from "./TaxonSearchBox";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { GradientSwatch } from "../common/GradientSwatch";
-import { coverImageSx, finePrintFontSize } from "../common/layoutSx";
+import { cardRadius, coverImageSx, finePrintFontSize } from "../common/layoutSx";
 
 interface TaxonTreePanelProps {
   items: TaxonTreeItem[];
@@ -148,16 +148,9 @@ export function TaxonTreePanel({
         }}
       >
         <Typography
-          variant="caption"
+          variant="overline"
           component="div"
-          sx={{
-            color: "text.disabled",
-            fontWeight: 600,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            px: 1,
-            py: 1,
-          }}
+          sx={{ color: "text.disabled", px: 1, py: 1 }}
         >
           Classification
         </Typography>
@@ -172,7 +165,7 @@ export function TaxonTreePanel({
           onItemExpansionToggle={(_e, id, isExpanded) => onItemExpansionToggle(id, isExpanded)}
           sx={(theme) => ({
             "& .MuiTreeItem-content": {
-              borderRadius: 1.25,
+              borderRadius: cardRadius,
               "&:hover": { backgroundColor: "action.hover" },
               "&.Mui-selected, &.Mui-selected:hover, &.Mui-selected.Mui-focused": {
                 backgroundColor: alpha(theme.palette.primary.main, 0.1),

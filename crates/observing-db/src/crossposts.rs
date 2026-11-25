@@ -4,6 +4,8 @@
 //! A crosspost is `pending` until it is posted (`synced`) or has been tried
 //! `max_attempts` times (`failed`). Every attempt is counted when it is
 //! claimed, not when it ends, so a job whose worker died still backs off.
+//! One queued with its occurrence may first wait for the ingester
+//! ([`defer`]), which gives the attempt back.
 
 use crate::types::{CrosspostLink, CrosspostRow, LinkedAccountRow};
 
@@ -79,7 +81,7 @@ pub async fn get(
         CrosspostRow,
         r#"
         SELECT occurrence_uri, service, did, external_uri, synced_blob_cids,
-               status, attempts, last_error
+               status, attempts, last_error, awaits_uris, waits
         FROM crossposts
         WHERE occurrence_uri = $1 AND service = $2
         "#,
@@ -111,35 +113,48 @@ pub async fn links_for_occurrence(
 
 /// Queue an occurrence for cross-posting, or requeue one that `failed`.
 /// Returns `false`, changing nothing, when it is already `pending` or `synced`.
+///
+/// `awaits_uris` are records the ingester must index before the crosspost may
+/// run: when queuing in the request that created the occurrence, every record
+/// it wrote; for an occurrence that is already indexed, none. It isn't claimed
+/// before `not_before`, when given.
 pub async fn enqueue(
     executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
     service: &str,
     did: &str,
+    awaits_uris: &[String],
+    not_before: Option<chrono::DateTime<chrono::Utc>>,
 ) -> Result<bool, sqlx::Error> {
     let result = sqlx::query!(
         r#"
-        INSERT INTO crossposts (occurrence_uri, service, did, status)
-        VALUES ($1, $2, $3, 'pending')
+        INSERT INTO crossposts (occurrence_uri, service, did, status, awaits_uris, not_before)
+        VALUES ($1, $2, $3, 'pending', $4, $5)
         ON CONFLICT (occurrence_uri, service) DO UPDATE SET
             status = 'pending',
             attempts = 0,
             last_error = NULL,
+            awaits_uris = EXCLUDED.awaits_uris,
+            waits = 0,
+            not_before = EXCLUDED.not_before,
             updated_at = NOW()
         WHERE crossposts.status = 'failed'
         "#,
         occurrence_uri,
         service,
         did,
+        awaits_uris,
+        not_before,
     )
     .execute(executor)
     .await?;
     Ok(result.rows_affected() > 0)
 }
 
-/// Claim up to `limit` pending crossposts whose backoff has elapsed, counting
-/// the attempt. The backoff is 30s after the first attempt and roughly doubles
-/// from there, which also keeps a second worker off a job that is in flight.
+/// Claim up to `limit` pending crossposts whose backoff has elapsed, and whose
+/// `not_before` has passed, counting the attempt. The backoff is 30s after the
+/// first attempt and roughly doubles from there, which also keeps a second
+/// worker off a job that is in flight.
 pub async fn claim_pending(
     executor: impl sqlx::PgExecutor<'_>,
     service: &str,
@@ -156,12 +171,13 @@ pub async fn claim_pending(
             WHERE service = $1
               AND status = 'pending'
               AND updated_at <= NOW() - make_interval(secs => 30 * (2 ^ attempts - 1))
+              AND (not_before IS NULL OR not_before <= NOW())
             ORDER BY updated_at
             LIMIT $2
             FOR UPDATE SKIP LOCKED
         )
         RETURNING occurrence_uri, service, did, external_uri, synced_blob_cids,
-                  status, attempts, last_error
+                  status, attempts, last_error, awaits_uris, waits
         "#,
         service,
         limit,
@@ -173,15 +189,19 @@ pub async fn claim_pending(
 /// When the next pending crosspost's backoff runs out: the earliest time
 /// [`claim_pending`] would hand one out. `None` when nothing is pending.
 ///
-/// The backoff is the same expression as `claim_pending`'s; keep them in step.
-/// A runtime query rather than `query!`, so it needs no `.sqlx` entry.
+/// The backoff and `not_before` are the same as `claim_pending`'s; keep them
+/// in step (`GREATEST` skips a NULL `not_before`). A runtime query rather than
+/// `query!`, so it needs no `.sqlx` entry.
 pub async fn next_due_at(
     executor: impl sqlx::PgExecutor<'_>,
     service: &str,
 ) -> Result<Option<chrono::DateTime<chrono::Utc>>, sqlx::Error> {
     sqlx::query_scalar(
         r#"
-        SELECT MIN(updated_at + make_interval(secs => 30 * (2 ^ attempts - 1)))
+        SELECT MIN(GREATEST(
+            updated_at + make_interval(secs => 30 * (2 ^ attempts - 1)),
+            not_before
+        ))
         FROM crossposts
         WHERE service = $1 AND status = 'pending'
         "#,
@@ -189,6 +209,99 @@ pub async fn next_due_at(
     .bind(service)
     .fetch_one(executor)
     .await
+}
+
+/// How much of the queue is pending, and since when the oldest of it has been.
+#[derive(Debug, PartialEq, Eq)]
+pub struct QueueStats {
+    pub pending: i64,
+    pub oldest: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// A runtime query rather than `query!`, so it needs no `.sqlx` entry.
+pub async fn queue_stats(
+    executor: impl sqlx::PgExecutor<'_>,
+    service: &str,
+) -> Result<QueueStats, sqlx::Error> {
+    let (pending, oldest) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*), MIN(created_at)
+        FROM crossposts
+        WHERE service = $1 AND status = 'pending'
+        "#,
+    )
+    .bind(service)
+    .fetch_one(executor)
+    .await?;
+    Ok(QueueStats { pending, oldest })
+}
+
+/// Whether the ingester has indexed every one of `uris`: occurrences,
+/// identifications, and remarks, the records a crosspost reads. They can be
+/// indexed in any order (see `20260602000000_drop_occurrence_ref_fks.sql`), so
+/// each is checked, not just the last one written.
+pub async fn all_indexed(
+    executor: impl sqlx::PgExecutor<'_>,
+    uris: &[String],
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"
+        SELECT NOT EXISTS (
+            SELECT 1 FROM UNNEST($1::text[]) AS awaited(uri)
+            WHERE NOT EXISTS (SELECT 1 FROM occurrences WHERE uri = awaited.uri)
+              AND NOT EXISTS (SELECT 1 FROM identifications WHERE uri = awaited.uri)
+              AND NOT EXISTS (SELECT 1 FROM remarks WHERE uri = awaited.uri)
+        ) as "indexed!"
+        "#,
+        uris,
+    )
+    .fetch_one(executor)
+    .await
+}
+
+/// Put a claimed crosspost back to check on the ingester again after `delay`,
+/// giving back the attempt its claim counted.
+pub async fn defer(
+    executor: impl sqlx::PgExecutor<'_>,
+    occurrence_uri: &str,
+    service: &str,
+    delay: chrono::Duration,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+        UPDATE crossposts
+        SET attempts = GREATEST(attempts - 1, 0),
+            waits = waits + 1,
+            not_before = NOW() + make_interval(secs => $3),
+            updated_at = NOW()
+        WHERE occurrence_uri = $1 AND service = $2 AND status = 'pending'
+        "#,
+        occurrence_uri,
+        service,
+        delay.as_seconds_f64(),
+    )
+    .execute(executor)
+    .await?;
+    Ok(())
+}
+
+/// Stop waiting on the ingester: everything the crosspost awaited is indexed.
+pub async fn clear_awaits(
+    executor: impl sqlx::PgExecutor<'_>,
+    occurrence_uri: &str,
+    service: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+        UPDATE crossposts SET awaits_uris = '{}'
+        WHERE occurrence_uri = $1 AND service = $2
+        "#,
+        occurrence_uri,
+        service,
+    )
+    .execute(executor)
+    .await?;
+    Ok(())
 }
 
 pub async fn set_external_uri(

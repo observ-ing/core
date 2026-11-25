@@ -6,7 +6,9 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use jacquard_common::types::tid::Tid;
 use jacquard_common::types::uri::UriValue;
-use observing_db::types::{BlobEntry, BlobImage, BlobRef as DbBlobRef, CrosspostLink};
+use observing_db::types::{
+    BlobEntry, BlobImage, BlobRef as DbBlobRef, CrosspostLink, ExternalRecordEntry,
+};
 use observing_lexicons::bio_lexicons::temp::v0_1::media::MediaRecord;
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::{
     ExternalRecord, ExternalRecordService, Occurrence, OccurrenceOrganismQuantityType,
@@ -22,6 +24,7 @@ use utoipa::ToSchema;
 use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::error::{AppError, ErrorResponse};
+use crate::inat::guard::{self, CrosspostRequest, Refusal};
 use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::{AgentType, AppState};
 use crate::validation::validate_license;
@@ -84,6 +87,12 @@ pub struct CreateOccurrenceRequest {
     /// same way as the occurrence remarks.
     #[ts(optional)]
     event_remarks: Option<String>,
+    /// Also post the occurrence to the user's linked iNaturalist account.
+    /// Clients decide this from the user's preferences; the server doesn't
+    /// fall back to them. Ignored without a linked account, or when
+    /// `externalRecords` already names an iNaturalist observation.
+    #[ts(optional)]
+    crosspost_to_inaturalist: Option<bool>,
 }
 
 impl RemarkTexts for CreateOccurrenceRequest {
@@ -212,7 +221,7 @@ trait RemarkTexts {
     path = "/api/occurrences",
     tag = "occurrences",
     request_body = CreateOccurrenceRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
         (status = 400, description = "A field failed validation", body = ErrorResponse),
@@ -240,7 +249,7 @@ pub async fn create_occurrence(
 
     // Upload blobs and create media records on the PDS. The DB row will be
     // populated by the ingester when the firehose commit arrives; the
-    // ingester resolves associatedMedia strong refs back into blob entries
+    // ingester resolves media strong refs back into blob entries
     // for the `associated_media` column.
     let (_blob_entries, media_refs) = upload_media_records(
         &agent,
@@ -256,6 +265,7 @@ pub async fn create_occurrence(
     let rkey = Tid::now_0();
     let occurrence_uri = format!("at://{}/{}/{}", user.did, OccurrenceRecord::NSID, rkey);
     let mut remark_ids = RemarkIds::default();
+    let mut remark_uris = Vec::new();
     for (term, text) in remark_texts {
         let prepared = remarks::prepare(
             &agent,
@@ -268,6 +278,7 @@ pub async fn create_occurrence(
             license,
         )
         .await?;
+        remark_uris.extend(prepared.id.clone());
         remark_ids.set(term, prepared.id);
     }
 
@@ -311,9 +322,10 @@ pub async fn create_occurrence(
     }
 
     // Auto-create first identification if a scientific name was provided
+    let mut identification_uri = None;
     if let Some(ref scientific_name) = body.scientific_name {
         if !scientific_name.is_empty() {
-            create_auto_identification(
+            identification_uri = create_auto_identification(
                 &state,
                 &agent,
                 &user.did,
@@ -328,11 +340,127 @@ pub async fn create_occurrence(
         }
     }
 
+    if body.crosspost_to_inaturalist == Some(true) {
+        let awaits = written_records(&uri, remark_uris, identification_uri);
+        queue_new_crosspost(
+            &state,
+            &user.did,
+            &uri,
+            &awaits,
+            body.external_records.as_deref(),
+        )
+        .await;
+    }
+
     Ok(Json(RecordCreatedResponse {
         success: true,
         uri,
         cid,
     }))
+}
+
+/// How long after creating an occurrence to start cross-posting it, so the
+/// ingester has usually indexed it by then.
+const NEW_CROSSPOST_DELAY: chrono::Duration = chrono::Duration::seconds(5);
+
+/// The records a create request wrote that a cross-post reads: the
+/// occurrence, its remarks, and the owner's identification, whose taxon is
+/// the one posted. The worker waits for the ingester to index them all, since
+/// it may do so in any order.
+fn written_records(
+    occurrence_uri: &str,
+    remark_uris: Vec<String>,
+    identification_uri: Option<String>,
+) -> Vec<String> {
+    std::iter::once(occurrence_uri.to_string())
+        .chain(remark_uris)
+        .chain(identification_uri)
+        .collect()
+}
+
+/// Whether a new occurrence, with these `externalRecords` from its form, may be
+/// cross-posted to iNaturalist: the rules for posting an existing one, for an
+/// occurrence that is the user's own and has never been queued.
+fn check_new_crosspost(
+    user_did: &str,
+    linked: bool,
+    external_records: Option<&[ExternalRecordInput]>,
+) -> Result<(), Refusal> {
+    let entries: Vec<ExternalRecordEntry> = external_records
+        .unwrap_or_default()
+        .iter()
+        .map(|record| ExternalRecordEntry {
+            uri: record.uri.clone(),
+            service: record.service.clone(),
+        })
+        .collect();
+    guard::check(&CrosspostRequest {
+        user_did,
+        occurrence_did: user_did,
+        linked,
+        external_records: Some(&entries),
+        crosspost_status: None,
+        crosspost_uri: None,
+    })
+}
+
+/// Queue a just-created occurrence for cross-posting to iNaturalist, once the
+/// ingester has indexed `awaits`. Never fails the request: the occurrence is
+/// saved, and the iNaturalist copy is a courtesy.
+async fn queue_new_crosspost(
+    state: &AppState,
+    user_did: &str,
+    occurrence_uri: &str,
+    awaits: &[String],
+    external_records: Option<&[ExternalRecordInput]>,
+) {
+    if state.inat.is_none() {
+        info!(uri = %occurrence_uri, "Not cross-posting: iNaturalist cross-posting is off");
+        return;
+    }
+    let linked =
+        match observing_db::crossposts::get_account(&state.pool, user_did, crate::inat::SERVICE)
+            .await
+        {
+            Ok(account) => account.is_some(),
+            Err(e) => {
+                warn!(uri = %occurrence_uri, error = %e, "Failed to look up iNaturalist account");
+                return;
+            }
+        };
+    if let Err(refusal) = check_new_crosspost(user_did, linked, external_records) {
+        info!(uri = %occurrence_uri, refusal = ?refusal, "Not cross-posting new occurrence");
+        return;
+    }
+    let start = chrono::Utc::now() + NEW_CROSSPOST_DELAY;
+    match observing_db::crossposts::enqueue(
+        &state.pool,
+        occurrence_uri,
+        crate::inat::SERVICE,
+        user_did,
+        awaits,
+        Some(start),
+    )
+    .await
+    {
+        Ok(_) => info!(uri = %occurrence_uri, "Queued new occurrence for cross-posting"),
+        Err(e) => {
+            warn!(uri = %occurrence_uri, error = %e, "Failed to queue cross-post");
+            return;
+        }
+    }
+    let run = observing_tasks::Run {
+        at: Some(start),
+        ..Default::default()
+    };
+    // If this fails, the hourly backstop run picks it up.
+    if let Err(e) = state
+        .tasks
+        .enqueue(observing_tasks::Task::InatCrossposts, run)
+        .await
+    {
+        warn!(uri = %occurrence_uri, error = %e, "Failed to queue a cross-post run");
+    }
 }
 
 /// Delete an occurrence.
@@ -345,7 +473,7 @@ pub async fn create_occurrence(
     path = "/api/occurrences/{uri}",
     tag = "occurrences",
     params(("uri" = String, Path, description = "AT URI of the occurrence (`at://...`), percent-encoded")),
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was deleted", body = SuccessResponse),
         (status = 400, description = "Invalid AT URI", body = ErrorResponse),
@@ -412,15 +540,19 @@ pub async fn delete_occurrence(
 
 /// Update an occurrence.
 ///
-/// Replaces the record on the caller's PDS. The request is the full new state
-/// of the occurrence: omitted optional fields are cleared, and existing media
-/// is kept only if its blob CID is listed in `retainedBlobCids`.
+/// Applies the edit on top of the record on the caller's PDS. The request is
+/// the full new state of the fields it carries: omitted optional fields are
+/// cleared, and existing media is kept only if its blob CID is listed in
+/// `retainedBlobCids`, or if observ.ing couldn't find its photo to show in
+/// the first place. Fields the request has no counterpart for, such as
+/// Darwin Core terms the form doesn't expose or fields another app wrote, are
+/// kept as they were, and so is the record's original `createdAt`.
 #[utoipa::path(
     put,
     path = "/api/occurrences",
     tag = "occurrences",
     request_body = UpdateOccurrenceRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was replaced", body = RecordCreatedResponse),
         (status = 400, description = "A field failed validation", body = ErrorResponse),
@@ -461,46 +593,18 @@ pub async fn update_occurrence(
         ));
     }
 
-    let (collection_nsid, rkey_parsed) = auth::parse_collection_and_rkey(&at_uri)?;
-
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
 
-    // Fetch existing PDS record so we can preserve retained associatedMedia strong refs
-    let existing = agent
-        .api
-        .com
-        .atproto
-        .repo
-        .get_record(
-            atrium_api::com::atproto::repo::get_record::ParametersData {
-                cid: None,
-                collection: collection_nsid.clone(),
-                repo: atrium_api::types::string::AtIdentifier::Did(did_parsed.clone()),
-                rkey: rkey_parsed.clone(),
-            }
-            .into(),
-        )
-        .await
-        .map_err(|e| {
-            if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
-                tracing::warn!(error = %e, "AT Protocol authentication failed (session expired)");
-                AppError::Unauthorized
-            } else {
-                AppError::Internal(format!("Failed to fetch record: {e}"))
-            }
-        })?;
+    // Fetch the existing PDS record: the edit is applied on top of it, and its
+    // media strong refs are what retained photos point to. Its CID guards the
+    // write below against a change made in the meantime.
+    let (existing_value, existing_cid) =
+        auth::get_at_record(&agent, did_parsed.clone(), &at_uri).await?;
+    let existing_media_refs = existing_media_refs(&existing_value);
 
-    let existing_value: serde_json::Value = serde_json::to_value(&existing.value)
-        .map_err(|e| AppError::Internal(format!("Failed to serialize existing record: {e}")))?;
-    let existing_media_refs = existing_value
-        .get("associatedMedia")
-        .and_then(|v| v.as_array())
-        .cloned()
-        .unwrap_or_default();
-
-    // Load the local DB row: its blob_entries are index-aligned with the PDS
-    // associatedMedia strong refs (both are written together by create_occurrence),
-    // which lets us map blob CIDs → strong refs without a per-media fetch.
+    // Load the local DB row: each of its photos names the media record it was
+    // resolved from, which maps retained blob CIDs to strong refs without a
+    // fetch per photo.
     let existing_db_row = observing_db::occurrences::get(&state.pool, &body.uri)
         .await?
         .ok_or_else(|| AppError::NotFound("Occurrence not found".into()))?;
@@ -508,28 +612,13 @@ pub async fn update_occurrence(
 
     let retained_cids = body.retained_blob_cids.clone().unwrap_or_default();
 
-    let mut media_refs: Vec<StrongRef> = Vec::new();
-
-    if existing_media_refs.len() == existing_blobs.len() {
-        for (i, blob) in existing_blobs.iter().enumerate() {
-            let blob_cid = blob.image.ref_.cid();
-            if retained_cids.iter().any(|cid| cid == blob_cid) {
-                match StrongRef::deserialize(&existing_media_refs[i]) {
-                    Ok(strong_ref) => media_refs.push(strong_ref),
-                    Err(e) => {
-                        warn!(error = %e, "Failed to parse existing strong ref; dropping");
-                    }
-                }
-            }
-        }
-    } else {
-        warn!(
-            uri = %body.uri,
-            pds_count = existing_media_refs.len(),
-            db_count = existing_blobs.len(),
-            "Mismatch between PDS associatedMedia and DB blob_entries; dropping retained media"
-        );
-    }
+    let mut media_refs = retained_media_refs(
+        existing_media_refs,
+        &existing_blobs,
+        &retained_cids,
+        |uri| fetch_media_blob_cid(&agent, uri),
+    )
+    .await;
 
     // Upload new images and append their strong refs to what was retained
     let (_new_blob_entries, new_media_refs) = upload_media_records(
@@ -588,7 +677,7 @@ pub async fn update_occurrence(
         Some(merged_external_records.as_slice())
     };
 
-    let record_value = build_occurrence_record_json(OccurrenceRecordFields {
+    let edited_value = build_occurrence_record_json(OccurrenceRecordFields {
         latitude: body.latitude,
         longitude: body.longitude,
         coordinate_uncertainty_in_meters: body.coordinate_uncertainty_in_meters,
@@ -599,37 +688,34 @@ pub async fn update_occurrence(
         media_refs,
         remark_ids: &remark_ids,
     })?;
+    let mut record_value = merge_edit_into_existing(existing_value, edited_value);
 
-    // putRecord on the PDS. The firehose commit that follows triggers the
-    // ingester to refresh the occurrence row — the appview no longer writes
-    // directly to that table, mirroring the create flow.
-    let resp = agent
-        .api
-        .com
-        .atproto
-        .repo
-        .put_record(
-            atrium_api::com::atproto::repo::put_record::InputData {
-                collection: collection_nsid,
-                record: serde_json::from_value(record_value)
-                    .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?,
-                repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
-                rkey: rkey_parsed,
-                swap_commit: None,
-                swap_record: None,
-                validate: None,
-            }
-            .into(),
-        )
-        .await
-        .map_err(|e| {
-            if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
-                tracing::warn!(error = %e, "AT Protocol authentication failed (session expired)");
-                AppError::Unauthorized
-            } else {
-                AppError::Internal(format!("Failed to put record: {e}"))
-            }
-        })?;
+    // If a scientific name was provided and no existing identification from
+    // this user already matches, a new identification follows the write
+    // (mirrors the create flow). It supersedes whatever the record accepted.
+    let new_identification = match body.scientific_name.as_deref().map(str::trim) {
+        Some(trimmed) if !trimmed.is_empty() => {
+            let existing_ids =
+                observing_db::identifications::get_for_occurrence(&state.pool, &body.uri)
+                    .await
+                    .unwrap_or_default();
+            let already_identified = existing_ids
+                .iter()
+                .any(|id| id.did == user.did && id.scientific_name == trimmed);
+            (!already_identified).then_some(trimmed)
+        }
+        _ => None,
+    };
+    if new_identification.is_some() {
+        clear_accepted_identification(&mut record_value);
+    }
+
+    // putRecord on the PDS, swapping on the fetched CID so a change made since
+    // (by another app, or the iNat link-back) fails the edit rather than being
+    // overwritten. The firehose commit that follows triggers the ingester to
+    // refresh the occurrence row — the appview no longer writes directly to
+    // that table, mirroring the create flow.
+    let resp = auth::put_at_record(&agent, did_parsed, &at_uri, record_value, existing_cid).await?;
 
     let uri = resp.uri.clone();
     let cid = resp.cid.as_ref().to_string();
@@ -647,32 +733,19 @@ pub async fn update_occurrence(
         warn!(error = %e, "Failed to save private location data");
     }
 
-    // If a scientific name was provided and no existing identification from this
-    // user already matches, auto-create a new identification (mirrors create flow).
-    if let Some(ref scientific_name) = body.scientific_name {
-        let trimmed = scientific_name.trim();
-        if !trimmed.is_empty() {
-            let existing_ids = observing_db::identifications::get_for_occurrence(&state.pool, &uri)
-                .await
-                .unwrap_or_default();
-            let already_identified = existing_ids
-                .iter()
-                .any(|id| id.did == user.did && id.scientific_name == trimmed);
-            if !already_identified {
-                create_auto_identification(
-                    &state,
-                    &agent,
-                    &user.did,
-                    trimmed,
-                    body.taxon_rank.as_deref(),
-                    body.kingdom.as_deref(),
-                    body.taxon_id.as_deref(),
-                    &uri,
-                    &cid,
-                )
-                .await?;
-            }
-        }
+    if let Some(scientific_name) = new_identification {
+        create_auto_identification(
+            &state,
+            &agent,
+            &user.did,
+            scientific_name,
+            body.taxon_rank.as_deref(),
+            body.kingdom.as_deref(),
+            body.taxon_id.as_deref(),
+            &uri,
+            &cid,
+        )
+        .await?;
     }
 
     Ok(Json(RecordCreatedResponse {
@@ -685,7 +758,7 @@ pub async fn update_occurrence(
 /// Upload each image as a blob, create a `bio.lexicons.temp.v0-1.media` record per
 /// blob, and return parallel `(blob_entries, media_refs)` vecs. The DB stores
 /// blob entries for efficient image serving; the PDS occurrence record stores
-/// strong refs to the media records under `associatedMedia`. Media-record
+/// strong refs to the media records under `media`. Media-record
 /// creation failures are logged and skipped (blob already uploaded is retained
 /// in DB).
 async fn upload_media_records(
@@ -696,6 +769,10 @@ async fn upload_media_records(
 ) -> Result<(Vec<BlobEntry>, Vec<StrongRef>), AppError> {
     use base64::Engine;
 
+    // Check every photo before uploading any, so one that's too large doesn't
+    // leave the photos ahead of it orphaned on the PDS.
+    check_image_sizes(images)?;
+
     let mut blob_entries = Vec::with_capacity(images.len());
     let mut media_refs = Vec::with_capacity(images.len());
 
@@ -703,6 +780,7 @@ async fn upload_media_records(
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(&img.data)
             .map_err(|e| AppError::BadRequest(format!("Invalid base64 image data: {e}")))?;
+        let size = bytes.len();
         let blob_resp = agent
             .api
             .com
@@ -710,7 +788,7 @@ async fn upload_media_records(
             .repo
             .upload_blob(bytes)
             .await
-            .map_err(|e| AppError::Internal(format!("Failed to upload blob: {e}")))?;
+            .map_err(|e| upload_blob_error(e, user_did, size))?;
 
         // Destructure atrium's BlobRef to build the DB BlobEntry with concrete types.
         let (cid_str, mime_type) = match &blob_resp.blob {
@@ -726,6 +804,7 @@ async fn upload_media_records(
             },
             alt: None,
             license: license.map(str::to_string),
+            media_uri: None,
         });
 
         // The media record still uses the raw atrium BlobRef value, which
@@ -764,6 +843,58 @@ async fn upload_media_records(
     Ok((blob_entries, media_refs))
 }
 
+/// Reject the upload if any photo is over the media lexicon's per-photo cap.
+fn check_image_sizes(images: &[ImageUpload]) -> Result<(), AppError> {
+    for img in images {
+        let size = base64_decoded_len(&img.data);
+        if size > constants::MAX_IMAGE_BYTES {
+            return Err(AppError::BadRequest(format!(
+                "One photo is {}; each photo can be at most {} MB.",
+                format_megabytes(size),
+                constants::MAX_IMAGE_BYTES / 1_000_000,
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// The number of bytes `b64` decodes to, worked out without decoding it.
+/// Assumes the padded standard alphabet the upload decoder requires; anything
+/// malformed is rejected when the data is actually decoded.
+fn base64_decoded_len(b64: &str) -> usize {
+    let padding = b64.bytes().rev().take_while(|&b| b == b'=').count();
+    (b64.len() / 4 * 3).saturating_sub(padding)
+}
+
+/// Map a failed `uploadBlob` call to the error the user sees. A PDS answers a
+/// blob over its own upload limit, which can be lower than ours, with a 413;
+/// that gets a message the user can act on instead of a generic 500.
+fn upload_blob_error(
+    e: atrium_api::xrpc::Error<atrium_api::com::atproto::repo::upload_blob::Error>,
+    user_did: &str,
+    size: usize,
+) -> AppError {
+    match e {
+        atrium_api::xrpc::Error::XrpcResponse(ref xrpc)
+            if xrpc.status == axum::http::StatusCode::PAYLOAD_TOO_LARGE =>
+        {
+            // Worth knowing how often this happens: it's the case a limit
+            // advertised by the PDS (describeServer) would catch earlier.
+            warn!(did = user_did, size, "PDS rejected photo as too large");
+            AppError::BadRequest(format!(
+                "Your PDS rejected a {} photo as too large. Try a smaller photo.",
+                format_megabytes(size),
+            ))
+        }
+        e => AppError::Internal(format!("Failed to upload blob: {e}")),
+    }
+}
+
+/// `bytes` in decimal megabytes to one decimal place, e.g. "6.2 MB".
+fn format_megabytes(bytes: usize) -> String {
+    format!("{:.1} MB", bytes as f64 / 1_000_000.0)
+}
+
 /// The record fields both the create and the edit path assemble before writing.
 /// Grouped into a struct rather than passed positionally so adding a field
 /// doesn't turn the call sites into a row of same-typed `Option<&str>`s.
@@ -797,7 +928,7 @@ impl RemarkIds {
 
 /// Build the `bio.lexicons.temp.v0-1.occurrence` record body and serialize it
 /// to JSON for the PDS write API. `media_refs` are attached via the typed
-/// builder's `associatedMedia` field. Defaults `eventDate` to now, and stamps a
+/// builder's `media` field. Defaults `eventDate` to now, and stamps a
 /// `createdAt` field (the AT Protocol authoring time) so the firehose ingester
 /// records when the post was authored on the PDS rather than when it was
 /// ingested. `createdAt` is an app-specific extension, not part of the upstream
@@ -888,6 +1019,190 @@ fn build_occurrence_record_json(
     }
 
     Ok(record_value)
+}
+
+/// The media strong refs on an existing occurrence record, read from the
+/// lexicon's `media` field, or from `associatedMedia` on records written
+/// before the lexicon renamed it (the same fallback the ingester uses).
+fn existing_media_refs(existing: &serde_json::Value) -> &[serde_json::Value] {
+    existing
+        .get("media")
+        .or_else(|| existing.get("associatedMedia"))
+        .and_then(|v| v.as_array())
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+}
+
+/// The existing media refs an edit keeps, in the record's order. Each ref is
+/// matched to its photo by the media record's URI, which the indexed photos
+/// carry, and kept if that photo's blob CID is in `retained_cids`. A ref with
+/// no indexed photo naming it may be one of the row's photos indexed before
+/// photos carried their URI: it gets its blob CID from `fetch_blob_cid`,
+/// counted only if one of those photos has it. Any other ref (one the
+/// ingester couldn't resolve) is kept: the edit form couldn't show it, so the
+/// user didn't remove it.
+async fn retained_media_refs<F, Fut>(
+    existing_refs: &[serde_json::Value],
+    indexed: &[BlobEntry],
+    retained_cids: &[String],
+    mut fetch_blob_cid: F,
+) -> Vec<StrongRef>
+where
+    F: FnMut(String) -> Fut,
+    Fut: std::future::Future<Output = Option<String>>,
+{
+    // Blob CIDs of the photos indexed without their media record's URI.
+    let unnamed: Vec<&str> = indexed
+        .iter()
+        .filter(|photo| photo.media_uri.is_none())
+        .map(|photo| photo.image.ref_.cid())
+        .collect();
+    let mut kept = Vec::with_capacity(existing_refs.len());
+    for value in existing_refs {
+        let strong_ref = match StrongRef::deserialize(value) {
+            Ok(strong_ref) => strong_ref,
+            Err(e) => {
+                warn!(error = %e, "Failed to parse existing strong ref; dropping");
+                continue;
+            }
+        };
+        let uri = strong_ref.uri.as_str();
+        let indexed_cid = indexed
+            .iter()
+            .find(|photo| photo.media_uri.as_deref() == Some(uri))
+            .map(|photo| photo.image.ref_.cid().to_string());
+        let blob_cid = match indexed_cid {
+            Some(cid) => Some(cid),
+            None if unnamed.is_empty() => None,
+            None => fetch_blob_cid(uri.to_string())
+                .await
+                .filter(|cid| unnamed.contains(&cid.as_str())),
+        };
+        match blob_cid {
+            Some(cid) => {
+                if retained_cids.contains(&cid) {
+                    kept.push(strong_ref);
+                }
+            }
+            None => {
+                warn!(uri, "Keeping a media ref whose photo couldn't be found");
+                kept.push(strong_ref);
+            }
+        }
+    }
+    kept
+}
+
+/// Fetch the `bio.lexicons.temp.v0-1.media` record at `uri` and return its
+/// blob CID, or `None` if it can't be fetched or holds no image.
+async fn fetch_media_blob_cid(agent: &AgentType, uri: String) -> Option<String> {
+    let at_uri = AtUri::from_str(&uri).ok()?;
+    let did = atrium_api::types::string::Did::new(at_uri.authority().as_str().to_string()).ok()?;
+    match auth::get_at_record(agent, did, &at_uri).await {
+        Ok((record, _)) => media_record_blob_cid(&record),
+        Err(e) => {
+            warn!(uri, error = ?e, "Failed to fetch media record");
+            None
+        }
+    }
+}
+
+/// The blob CID of a `bio.lexicons.temp.v0-1.media` record's `image`.
+fn media_record_blob_cid(record: &serde_json::Value) -> Option<String> {
+    let blob_ref = DbBlobRef::deserialize(record.get("image")?.get("ref")?).ok()?;
+    Some(blob_ref.cid().to_string())
+}
+
+/// Record keys the edit form owns. An edit replaces these wholesale (removing
+/// any the form left empty); every other key on the existing record, such as
+/// Darwin Core terms the form doesn't expose or fields another app wrote, is
+/// left as it was. `associatedMedia` is the pre-rename spelling of `media`.
+const EDIT_FORM_FIELDS: &[&str] = &[
+    "decimalLatitude",
+    "decimalLongitude",
+    "coordinateUncertaintyInMeters",
+    "eventDate",
+    "organismQuantity",
+    "organismQuantityType",
+    "media",
+    "associatedMedia",
+    "externalRecords",
+];
+
+/// Apply an edit to the existing PDS record: the `edited` record (built from
+/// the form by `build_occurrence_record_json`) overwrites the form-owned
+/// fields, and everything else on `existing` is kept, including its original
+/// `createdAt`. An `externalRecords` entry the edit keeps also keeps any keys
+/// on it beyond the ones the form owns.
+fn merge_edit_into_existing(
+    existing: serde_json::Value,
+    edited: serde_json::Value,
+) -> serde_json::Value {
+    let serde_json::Value::Object(mut edited) = edited else {
+        return edited;
+    };
+    let mut merged = match existing {
+        serde_json::Value::Object(existing) => existing,
+        _ => serde_json::Map::new(),
+    };
+    if let (Some(existing), Some(edited)) = (
+        merged.get("externalRecords"),
+        edited.get_mut("externalRecords"),
+    ) {
+        keep_unmodeled_external_record_keys(existing, edited);
+    }
+    let remark_fields = RemarkTerm::ALL.map(RemarkTerm::occurrence_field);
+    for key in EDIT_FORM_FIELDS.iter().chain(remark_fields.iter()) {
+        merged.remove(*key);
+    }
+    for (key, value) in edited {
+        if key == "createdAt" && merged.contains_key("createdAt") {
+            continue;
+        }
+        merged.insert(key, value);
+    }
+    serde_json::Value::Object(merged)
+}
+
+/// Copy onto each edited `externalRecords` entry the keys its existing
+/// counterpart (the entry with the same `uri`) has beyond the form's `uri` and
+/// `service`, such as ones another app added.
+fn keep_unmodeled_external_record_keys(
+    existing: &serde_json::Value,
+    edited: &mut serde_json::Value,
+) {
+    const FORM_OWNED: [&str; 2] = ["uri", "service"];
+    let (Some(existing), Some(edited)) = (existing.as_array(), edited.as_array_mut()) else {
+        return;
+    };
+    for entry in edited
+        .iter_mut()
+        .filter_map(serde_json::Value::as_object_mut)
+    {
+        let Some(previous) = existing
+            .iter()
+            .filter_map(serde_json::Value::as_object)
+            .find(|previous| previous.get("uri") == entry.get("uri"))
+        else {
+            continue;
+        };
+        for (key, value) in previous {
+            if !FORM_OWNED.contains(&key.as_str()) && !entry.contains_key(key) {
+                entry.insert(key.clone(), value.clone());
+            }
+        }
+    }
+}
+
+/// Remove the record's accepted identification: `acceptedIdentificationID`
+/// and the `taxonID` the lexicon derives from it, which must appear together.
+/// Called when an edit adds an identification for a different taxon, so the
+/// record doesn't keep claiming to accept the one it replaced.
+fn clear_accepted_identification(record: &mut serde_json::Value) {
+    if let Some(obj) = record.as_object_mut() {
+        obj.remove("taxonID");
+        obj.remove("acceptedIdentificationID");
+    }
 }
 
 /// Validate the submitted external records and turn them into the lexicon's
@@ -1004,6 +1319,8 @@ fn is_supported_external_record_uri(uri: &str) -> bool {
 /// Jetstream delivers commits in repo order, so the preceding occurrence
 /// upsert (needed to satisfy the FK on `identifications.subject_uri`) is
 /// guaranteed to run first.
+///
+/// Returns the identification's AT URI, or `None` if writing it failed.
 #[allow(clippy::too_many_arguments)]
 async fn create_auto_identification(
     state: &AppState,
@@ -1015,7 +1332,7 @@ async fn create_auto_identification(
     user_taxon_id: Option<&str>,
     occurrence_uri: &str,
     occurrence_cid: &str,
-) -> Result<(), AppError> {
+) -> Result<Option<String>, AppError> {
     let id_value = auto_id::build_identification_record(
         state,
         scientific_name,
@@ -1031,12 +1348,13 @@ async fn create_auto_identification(
     match auth::create_at_record(agent, id_did, auto_id::identification_nsid(), id_value).await {
         Ok(id_resp) => {
             info!(uri = %id_resp.uri, "Auto-created identification (PDS); awaiting ingester");
+            Ok(Some(id_resp.uri.to_string()))
         }
         Err(e) => {
             warn!(error = ?e, "Failed to auto-create identification");
+            Ok(None)
         }
     }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -1262,6 +1580,354 @@ mod tests {
         assert!(record.get("occurrenceRemarksId").is_none());
     }
 
+    fn edited_record() -> serde_json::Value {
+        json!({
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
+            "decimalLatitude": "1.5",
+            "decimalLongitude": "2.5",
+            "coordinateUncertaintyInMeters": 10,
+            "eventDate": "2024-06-15",
+            "createdAt": "2026-11-09T00:00:00+00:00",
+        })
+    }
+
+    /// Fields the edit form doesn't own (Darwin Core terms it doesn't
+    /// expose, or ones another app added) survive the edit.
+    #[test]
+    fn an_edit_keeps_fields_the_form_does_not_own() {
+        let existing = json!({
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
+            "decimalLatitude": "37.8",
+            "decimalLongitude": "-122.2",
+            "eventDate": "2024-06-14",
+            "eventID": "at://did:plc:alice/bio.cuanto.survey/abc",
+            "com.example.custom": { "keep": true },
+        });
+
+        let merged = merge_edit_into_existing(existing, edited_record());
+
+        assert_eq!(
+            merged["eventID"],
+            "at://did:plc:alice/bio.cuanto.survey/abc"
+        );
+        assert_eq!(merged["com.example.custom"], json!({ "keep": true }));
+        assert_eq!(merged["decimalLatitude"], "1.5");
+        assert_eq!(merged["eventDate"], "2024-06-15");
+    }
+
+    /// `createdAt` is the authoring time the feed sorts by, so an edit
+    /// leaves it alone.
+    #[test]
+    fn an_edit_keeps_the_original_created_at() {
+        let existing = json!({ "createdAt": "2026-08-24T20:00:00.000Z" });
+
+        let merged = merge_edit_into_existing(existing, edited_record());
+
+        assert_eq!(merged["createdAt"], "2026-08-24T20:00:00.000Z");
+    }
+
+    #[test]
+    fn an_edit_stamps_created_at_on_a_record_that_lacks_one() {
+        let merged = merge_edit_into_existing(json!({}), edited_record());
+
+        assert_eq!(merged["createdAt"], "2026-11-09T00:00:00+00:00");
+    }
+
+    /// A field the form owns but submitted empty is removed, not kept from
+    /// the existing record.
+    #[test]
+    fn an_edit_removes_form_owned_fields_it_cleared() {
+        let existing = json!({
+            "organismQuantity": "3",
+            "organismQuantityType": "individuals",
+            "occurrenceRemarksID": "at://did:plc:alice/bio.lexicons.temp.v0-1.remark/a",
+            "externalRecords": [{ "uri": "https://example.org/1" }],
+            "media": [{ "uri": "at://x/bio.lexicons.temp.v0-1.media/a", "cid": "bafy" }],
+        });
+
+        let merged = merge_edit_into_existing(existing, edited_record());
+
+        for key in [
+            "organismQuantity",
+            "organismQuantityType",
+            "occurrenceRemarksID",
+            "externalRecords",
+            "media",
+        ] {
+            assert!(merged.get(key).is_none(), "{key} should be cleared");
+        }
+    }
+
+    /// An `externalRecords` entry the edit keeps keeps the keys another app
+    /// added to it. The lexicon's own `service` follows the form, so clearing
+    /// it sticks, and an entry the form removed is gone with its keys.
+    #[test]
+    fn an_edit_keeps_unmodeled_keys_on_the_external_records_it_keeps() {
+        let existing = json!({
+            "externalRecords": [
+                {
+                    "uri": "https://example.org/1",
+                    "service": "bugguide",
+                    "com.example.note": "keep",
+                },
+                { "uri": "https://example.org/2", "com.example.note": "gone" },
+            ],
+        });
+        let mut edited = edited_record();
+        edited["externalRecords"] = json!([
+            { "uri": "https://example.org/1" },
+            { "uri": "https://example.org/3", "service": "inaturalist" },
+        ]);
+
+        let merged = merge_edit_into_existing(existing, edited);
+
+        assert_eq!(
+            merged["externalRecords"],
+            json!([
+                { "uri": "https://example.org/1", "com.example.note": "keep" },
+                { "uri": "https://example.org/3", "service": "inaturalist" },
+            ])
+        );
+    }
+
+    /// A new identification supersedes the accepted one, so the pair that
+    /// names it goes; nothing else does.
+    #[test]
+    fn clearing_the_accepted_identification_removes_both_halves_of_the_pair() {
+        let mut record = json!({
+            "taxonID": "https://www.gbif.org/species/5231190",
+            "acceptedIdentificationID": {
+                "uri": "at://did:plc:alice/bio.lexicons.temp.v0-1.identification/a",
+                "cid": "bafy",
+            },
+            "eventID": "at://did:plc:alice/bio.cuanto.survey/abc",
+        });
+
+        clear_accepted_identification(&mut record);
+
+        assert!(record.get("taxonID").is_none());
+        assert!(record.get("acceptedIdentificationID").is_none());
+        assert_eq!(
+            record["eventID"],
+            "at://did:plc:alice/bio.cuanto.survey/abc"
+        );
+    }
+
+    /// Pre-#600 records carry media under `associatedMedia`; once an edit
+    /// writes `media`, the stale legacy copy must not linger beside it.
+    #[test]
+    fn an_edit_drops_the_legacy_associated_media_field() {
+        let existing = json!({
+            "associatedMedia": [{ "uri": "at://x/bio.lexicons.temp.v0-1.media/a", "cid": "bafy" }],
+        });
+        let mut edited = edited_record();
+        edited["media"] = json!([{ "uri": "at://x/bio.lexicons.temp.v0-1.media/b", "cid": "b2" }]);
+
+        let merged = merge_edit_into_existing(existing, edited);
+
+        assert!(merged.get("associatedMedia").is_none());
+        assert_eq!(merged["media"][0]["cid"], "b2");
+    }
+
+    /// Every field the form writes must be listed as form-owned, or an edit
+    /// that clears it would leave the old value behind on the record.
+    #[test]
+    fn every_field_the_form_writes_is_form_owned() {
+        let remark_ids = RemarkIds {
+            occurrence_remarks: Some("at://did:plc:alice/bio.lexicons.temp.v0-1.remark/a".into()),
+            event_remarks: Some("at://did:plc:alice/bio.lexicons.temp.v0-1.remark/b".into()),
+        };
+        let media_ref = auth::build_strong_ref(
+            "at://did:plc:alice/bio.lexicons.temp.v0-1.media/a",
+            "bafkreibme22gw2h7y2h7tg2fhqotaqjucnbc24deqo72b6mkl2egezxhvy",
+        )
+        .expect("valid strong ref");
+        let record = build_occurrence_record_json(OccurrenceRecordFields {
+            latitude: 37.7749,
+            longitude: -122.4194,
+            coordinate_uncertainty_in_meters: Some(10),
+            organism_quantity: Some("3"),
+            organism_quantity_type: Some("individuals"),
+            event_date: Some("2024-06-15"),
+            external_records: Some(&[input("https://example.org/1", Some("inaturalist"))]),
+            media_refs: vec![media_ref],
+            remark_ids: &remark_ids,
+        })
+        .expect("valid record");
+
+        let remark_fields = RemarkTerm::ALL.map(RemarkTerm::occurrence_field);
+        for key in record.as_object().expect("an object").keys() {
+            let key = key.as_str();
+            assert!(
+                ["$type", "createdAt"].contains(&key)
+                    || EDIT_FORM_FIELDS.contains(&key)
+                    || remark_fields.contains(&key),
+                "{key} is written by the form but missing from EDIT_FORM_FIELDS"
+            );
+        }
+    }
+
+    /// Current records hold their media refs under the lexicon's `media`.
+    #[test]
+    fn reads_existing_media_refs_from_the_media_field() {
+        let existing = json!({
+            "media": [{ "uri": "at://x/bio.lexicons.temp.v0-1.media/a", "cid": "bafy" }],
+        });
+
+        let refs = existing_media_refs(&existing);
+
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0]["cid"], "bafy");
+    }
+
+    #[test]
+    fn reads_existing_media_refs_from_the_legacy_field() {
+        let existing = json!({
+            "associatedMedia": [{ "uri": "at://x/bio.lexicons.temp.v0-1.media/a", "cid": "old" }],
+        });
+
+        let refs = existing_media_refs(&existing);
+
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0]["cid"], "old");
+    }
+
+    const MEDIA_A: &str = "at://did:plc:alice/bio.lexicons.temp.v0-1.media/a";
+    const MEDIA_B: &str = "at://did:plc:alice/bio.lexicons.temp.v0-1.media/b";
+    const MEDIA_C: &str = "at://did:plc:alice/bio.lexicons.temp.v0-1.media/c";
+    const RECORD_CID: &str = "bafyreie5737gdxlw5i64vzichcalba3z2v5n6icifvx5xytvske7mr3hpm";
+
+    fn media_ref(uri: &str) -> serde_json::Value {
+        json!({ "uri": uri, "cid": RECORD_CID })
+    }
+
+    fn indexed_photo(blob_cid: &str, media_uri: Option<&str>) -> BlobEntry {
+        BlobEntry {
+            image: BlobImage {
+                ref_: DbBlobRef::Link {
+                    link: blob_cid.to_string(),
+                },
+                mime_type: "image/jpeg".to_string(),
+            },
+            alt: None,
+            license: None,
+            media_uri: media_uri.map(str::to_string),
+        }
+    }
+
+    fn kept_uris(refs: &[StrongRef]) -> Vec<&str> {
+        refs.iter().map(|r| r.uri.as_str()).collect()
+    }
+
+    /// A fetcher for tests that expect no media record to be fetched.
+    async fn no_fetch(uri: String) -> Option<String> {
+        panic!("unexpected fetch of {uri}");
+    }
+
+    /// The issue's example: one of three refs never resolved, so the row
+    /// holds two photos. Keeping both must not cost the record any ref.
+    #[tokio::test]
+    async fn an_edit_keeps_a_ref_that_never_resolved() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B), media_ref(MEDIA_C)];
+        let indexed = [
+            indexed_photo("blob-a", Some(MEDIA_A)),
+            indexed_photo("blob-c", Some(MEDIA_C)),
+        ];
+        let retained = ["blob-a".to_string(), "blob-c".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, |_| async { None }).await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_A, MEDIA_B, MEDIA_C]);
+    }
+
+    #[tokio::test]
+    async fn an_edit_drops_a_photo_left_out_of_the_retained_list() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B)];
+        let indexed = [
+            indexed_photo("blob-a", Some(MEDIA_A)),
+            indexed_photo("blob-b", Some(MEDIA_B)),
+        ];
+        let retained = ["blob-b".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, no_fetch).await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_B]);
+    }
+
+    /// Matching is by URI, not position: a photo indexed out of the record's
+    /// order, or a stale one no ref names, doesn't shift which ref is kept.
+    #[tokio::test]
+    async fn an_edit_matches_photos_to_refs_by_uri() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B)];
+        let indexed = [
+            indexed_photo("blob-stale", Some(MEDIA_C)),
+            indexed_photo("blob-b", Some(MEDIA_B)),
+            indexed_photo("blob-a", Some(MEDIA_A)),
+        ];
+        let retained = ["blob-a".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, no_fetch).await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_A]);
+    }
+
+    /// Rows indexed before photos carried their media URI are matched by
+    /// fetching each media record for its blob CID.
+    #[tokio::test]
+    async fn an_edit_fetches_the_blob_cid_of_a_ref_with_no_indexed_uri() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B)];
+        let indexed = [indexed_photo("blob-a", None), indexed_photo("blob-b", None)];
+        let retained = ["blob-b".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, |uri| async move {
+            match uri.as_str() {
+                MEDIA_A => Some("blob-a".to_string()),
+                MEDIA_B => Some("blob-b".to_string()),
+                _ => None,
+            }
+        })
+        .await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_B]);
+    }
+
+    /// A ref the ingester couldn't resolve has no photo in the row, so the
+    /// form didn't show it. Its media record being fetchable now doesn't make
+    /// leaving it out of the retained list a removal.
+    #[tokio::test]
+    async fn an_edit_keeps_a_ref_that_never_resolved_even_if_it_can_be_fetched_now() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B)];
+        let indexed = [indexed_photo("blob-a", Some(MEDIA_A))];
+        let retained = ["blob-a".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, |_| async {
+            Some("blob-b".to_string())
+        })
+        .await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_A, MEDIA_B]);
+    }
+
+    /// The media record's blob CID, read from its `image` blob ref.
+    #[test]
+    fn reads_the_blob_cid_of_a_media_record() {
+        let record = json!({
+            "$type": "bio.lexicons.temp.v0-1.media",
+            "image": {
+                "$type": "blob",
+                "ref": { "$link": "bafkreiblob" },
+                "mimeType": "image/jpeg",
+                "size": 1,
+            },
+        });
+
+        assert_eq!(
+            media_record_blob_cid(&record).as_deref(),
+            Some("bafkreiblob")
+        );
+        assert_eq!(media_record_blob_cid(&json!({ "alt": "no image" })), None);
+    }
+
     /// Scheme matching is case-insensitive, as URI schemes are.
     #[test]
     fn accepts_an_uppercase_scheme() {
@@ -1269,6 +1935,122 @@ mod tests {
             build_external_records(&[input("HTTPS://example.org/1", None)])
                 .expect("valid entry")
                 .is_some()
+        );
+    }
+
+    fn image_of_size(bytes: usize) -> ImageUpload {
+        use base64::Engine;
+        ImageUpload {
+            data: base64::engine::general_purpose::STANDARD.encode(vec![0u8; bytes]),
+            mime_type: "image/jpeg".to_string(),
+        }
+    }
+
+    /// Every padding case (none, one `=`, two `=`) lands on the exact length.
+    #[test]
+    fn base64_decoded_len_matches_the_decoded_bytes() {
+        for len in 0..=12 {
+            assert_eq!(base64_decoded_len(&image_of_size(len).data), len);
+        }
+    }
+
+    /// The cap is inclusive, matching the lexicon's `maxSize`.
+    #[test]
+    fn accepts_a_photo_exactly_at_the_cap() {
+        assert!(check_image_sizes(&[image_of_size(constants::MAX_IMAGE_BYTES)]).is_ok());
+    }
+
+    /// One oversized photo rejects the whole batch, wherever it sits in it.
+    #[test]
+    fn rejects_a_batch_holding_a_photo_over_the_cap() {
+        let images = [
+            image_of_size(1),
+            image_of_size(constants::MAX_IMAGE_BYTES + 400_000),
+        ];
+        match check_image_sizes(&images) {
+            Err(AppError::BadRequest(msg)) => {
+                assert_eq!(
+                    msg,
+                    "One photo is 10.4 MB; each photo can be at most 10 MB."
+                )
+            }
+            other => panic!("expected BadRequest, got {other:?}"),
+        }
+    }
+
+    fn xrpc_error(
+        status: u16,
+    ) -> atrium_api::xrpc::Error<atrium_api::com::atproto::repo::upload_blob::Error> {
+        atrium_api::xrpc::Error::XrpcResponse(atrium_api::xrpc::error::XrpcError {
+            status: axum::http::StatusCode::from_u16(status).expect("valid status"),
+            error: None,
+        })
+    }
+
+    /// A PDS rejecting a blob over its own limit reaches the user as a
+    /// message they can act on, not a generic server error.
+    #[test]
+    fn surfaces_a_pds_payload_too_large_rejection() {
+        match upload_blob_error(xrpc_error(413), "did:plc:alice", 6_200_000) {
+            AppError::BadRequest(msg) => assert_eq!(
+                msg,
+                "Your PDS rejected a 6.2 MB photo as too large. Try a smaller photo."
+            ),
+            other => panic!("expected BadRequest, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn other_upload_failures_stay_internal() {
+        assert!(matches!(
+            upload_blob_error(xrpc_error(500), "did:plc:alice", 1),
+            AppError::Internal(_)
+        ));
+    }
+
+    /// The identification has to be awaited: posting before it is indexed
+    /// posts no taxon, and the observation is only posted once.
+    #[test]
+    fn a_new_crosspost_waits_for_every_record_the_request_wrote() {
+        let occurrence = "at://did:plc:alice/bio.lexicons.temp.v0-1.occurrence/o";
+        let remark = "at://did:plc:alice/bio.lexicons.temp.v0-1.remark/m";
+        let identification = "at://did:plc:alice/bio.lexicons.temp.v0-1.identification/i";
+        assert_eq!(
+            written_records(
+                occurrence,
+                vec![remark.to_string()],
+                Some(identification.to_string())
+            ),
+            [occurrence, remark, identification]
+        );
+        // With no identification written, the occurrence is still awaited.
+        assert_eq!(written_records(occurrence, vec![], None), [occurrence]);
+    }
+
+    #[test]
+    fn a_new_occurrence_may_be_crossposted_by_a_linked_user() {
+        let records = [input("https://bugguide.net/node/view/1", None)];
+        assert_eq!(
+            check_new_crosspost("did:plc:alice", true, Some(&records)),
+            Ok(())
+        );
+        assert_eq!(check_new_crosspost("did:plc:alice", true, None), Ok(()));
+    }
+
+    #[test]
+    fn a_new_occurrence_is_not_crossposted_without_a_linked_account() {
+        assert_eq!(
+            check_new_crosspost("did:plc:alice", false, None),
+            Err(Refusal::NotLinked)
+        );
+    }
+
+    #[test]
+    fn a_new_occurrence_that_names_an_inat_observation_is_not_crossposted() {
+        let records = [input("https://www.inaturalist.org/observations/1", None)];
+        assert_eq!(
+            check_new_crosspost("did:plc:alice", true, Some(&records)),
+            Err(Refusal::AlreadyOnInat)
         );
     }
 }

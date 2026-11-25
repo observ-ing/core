@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
-import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor, act } from "@testing-library/react";
-import authReducer, { checkAuth } from "../../store/authSlice";
-import feedReducer from "../../store/feedSlice";
+import { makeStore, type AppStore } from "../../store";
+import { checkAuth } from "../../store/authSlice";
 import type { User } from "../../services/types";
 import type * as ApiModule from "../../services/api";
 
@@ -25,27 +24,19 @@ vi.mock("../../services/api", async (importOriginal) => ({
 // Imported after the mock is registered so the hook closes over the stubs.
 import { useFeed, useObservation } from "./hooks";
 import { qk } from "./keys";
-import uiReducer, { startDeletingObservation } from "../../store/uiSlice";
+import { startDeletingObservation } from "../../store/uiSlice";
 
 const TEST_USER: User = { did: "did:plc:tester", handle: "tester.example" };
 
-// A fresh store starts at { user: null, isLoading: true } — exactly the
-// startup state before the `checkAuth` round-trip resolves.
-function makeStore() {
-  return configureStore({ reducer: { auth: authReducer, feed: feedReducer } });
-}
-
-type Store = ReturnType<typeof makeStore>;
-
 // `checkAuth.fulfilled(payload)` is the same action the real thunk dispatches
 // when the session check returns: it sets `user` and clears `isLoading`.
-function resolveAuth(store: Store, user: User | null) {
+function resolveAuth(store: AppStore, user: User | null) {
   act(() => {
     store.dispatch(checkAuth.fulfilled(user, "req"));
   });
 }
 
-function wrapper(store: Store, client: QueryClient) {
+function wrapper(store: AppStore, client: QueryClient) {
   return ({ children }: { children: ReactNode }) => (
     <Provider store={store}>
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -69,7 +60,9 @@ describe("useFeed", () => {
   });
 
   it("fetches nothing until the startup auth check resolves", async () => {
-    const store = makeStore(); // isLoading: true
+    // A fresh store starts at { user: null, isLoading: true }: the startup
+    // state before the `checkAuth` round-trip resolves.
+    const store = makeStore();
     renderHook(() => useFeed("home"), { wrapper: wrapper(store, makeClient()) });
 
     // Give React Query a turn; the query must stay disabled while auth loads,
@@ -139,34 +132,22 @@ describe("useFeed", () => {
 describe("useObservation", () => {
   const URI = "at://did:plc:tester/bio.lexicons.temp.v0-1.occurrence/abc";
 
-  function makeUiStore() {
-    return configureStore({ reducer: { ui: uiReducer } });
-  }
-
-  function uiWrapper(store: ReturnType<typeof makeUiStore>, client: QueryClient) {
-    return ({ children }: { children: ReactNode }) => (
-      <Provider store={store}>
-        <QueryClientProvider client={client}>{children}</QueryClientProvider>
-      </Provider>
-    );
-  }
-
   beforeEach(() => {
     fetchObservation.mockClear();
   });
 
   it("fetches the observation when no delete is in progress", async () => {
-    const store = makeUiStore();
-    renderHook(() => useObservation(URI), { wrapper: uiWrapper(store, makeClient()) });
+    const store = makeStore();
+    renderHook(() => useObservation(URI), { wrapper: wrapper(store, makeClient()) });
 
     await waitFor(() => expect(fetchObservation).toHaveBeenCalledTimes(1));
     expect(fetchObservation).toHaveBeenCalledWith(URI);
   });
 
   it("does not fetch while that observation is being deleted", async () => {
-    const store = makeUiStore();
+    const store = makeStore();
     store.dispatch(startDeletingObservation(URI));
-    renderHook(() => useObservation(URI), { wrapper: uiWrapper(store, makeClient()) });
+    renderHook(() => useObservation(URI), { wrapper: wrapper(store, makeClient()) });
 
     // Give React Query a turn; the query must stay disabled, so no refetch of
     // the row the delete is about to remove.
@@ -175,11 +156,11 @@ describe("useObservation", () => {
   });
 
   it("still fetches when a different observation is being deleted", async () => {
-    const store = makeUiStore();
+    const store = makeStore();
     store.dispatch(
       startDeletingObservation("at://did:plc:other/bio.lexicons.temp.v0-1.occurrence/zzz"),
     );
-    renderHook(() => useObservation(URI), { wrapper: uiWrapper(store, makeClient()) });
+    renderHook(() => useObservation(URI), { wrapper: wrapper(store, makeClient()) });
 
     await waitFor(() => expect(fetchObservation).toHaveBeenCalledTimes(1));
   });

@@ -8,8 +8,9 @@ public firehose, production, or any other AppView. This is CI's `e2e` job.
 npm run test:e2e:devenv
 ```
 
-Needs Postgres running (`npm run db:up`), plus `psql`, `process-compose` and
-`tap` (`scripts/install-tap.sh`) on PATH. Stop the normal dev stack first; the
+Needs Postgres running (`npm run db:up`), plus `psql`, `process-compose`,
+`tap` (`scripts/install-tap.sh`) and [`goat`](https://github.com/bluesky-social/goat)
+(`brew install goat`) on PATH. Stop the normal dev stack first; the
 run uses the same ports and refuses to start if they're taken.
 
 ## What a run does
@@ -26,6 +27,10 @@ run uses the same ports and refuses to start if they're taken.
 5. Runs `playwright.devenv.config.ts`: the dev-env login, then `e2e.spec.ts`.
    (The mocked `integration` suite needs no backend; it's CI's `integration`
    job, `npm run test:integration`.)
+6. Replays the PDS firehose with `goat firehose --ops` and checks every
+   `bio.lexicons.*` / `ing.observ.*` record the run wrote with
+   `goat lex validate` against `lexicons/` (`scripts/validate-devenv-records.ts`).
+   An invalid record fails the run, even if Playwright passed.
 
 | Var                   | Points at                                              |
 | --------------------- | ------------------------------------------------------ |

@@ -1,13 +1,13 @@
 import { test as setup, expect } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync } from "fs";
 import { dirname, resolve } from "path";
 
 /**
  * Authenticates against the local @atproto/dev-env PDS (not bsky.social), so
  * the e2e run is fully isolated from the public network.
  *
- * Writes playwright/.auth/user.json + user-info.json, which e2e.spec.ts and
- * the auth fixture (fixtures/auth.ts) read.
+ * Writes playwright/.auth/user.json, which playwright.devenv.config.ts loads
+ * into every e2e.spec.ts test's page.
  *
  * Credentials come from scripts/e2e-devenv.ts via DEVENV_HANDLE / DEVENV_PASSWORD.
  *
@@ -17,7 +17,6 @@ import { dirname, resolve } from "path";
  */
 
 const AUTH_FILE = resolve("playwright/.auth/user.json");
-const USER_INFO_FILE = resolve("playwright/.auth/user-info.json");
 const AUTH_DIR = dirname(AUTH_FILE);
 
 setup("authenticate via dev-env PDS OAuth", async ({ page, baseURL }) => {
@@ -52,13 +51,13 @@ setup("authenticate via dev-env PDS OAuth", async ({ page, baseURL }) => {
   //    Predicate form: a negative-lookahead regex like /(?!.*127\.0\.0\.1).*/
   //    matches any URL (the engine finds a suffix where the lookahead holds),
   //    so waitForURL would return without waiting for the redirect.
-  await page.waitForURL((url) => url.origin !== appOrigin, { timeout: 15000 });
+  await page.waitForURL((url) => url.origin !== appOrigin, { timeout: 15_000 });
   await page.waitForLoadState("domcontentloaded");
 
   // 4. dev-env PDS sign-in form. The username may be pre-filled from the OAuth
   //    login hint; fill it only when empty.
   const usernameField = page.locator('input[name="username"]');
-  await expect(usernameField).toBeVisible({ timeout: 15000 });
+  await expect(usernameField).toBeVisible();
   if (!(await usernameField.inputValue())) {
     await usernameField.fill(handle);
   }
@@ -67,24 +66,15 @@ setup("authenticate via dev-env PDS OAuth", async ({ page, baseURL }) => {
 
   // 5. Consent screen — grant access.
   const authorizeButton = page.getByRole("button", { name: "Authorize" });
-  await expect(authorizeButton).toBeVisible({ timeout: 15000 });
+  await expect(authorizeButton).toBeVisible();
   await authorizeButton.click();
 
   // 6. Back to our app.
-  await page.waitForURL((url) => url.origin === appOrigin, { timeout: 30000 });
+  await page.waitForURL((url) => url.origin === appOrigin, { timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
-    timeout: 10000,
+    timeout: 10_000,
   });
 
   // 7. Persist auth state for e2e.spec.ts.
-  const userInfo = await page.evaluate(async () => {
-    const res = await fetch("/oauth/me", { credentials: "include" });
-    const data = await res.json();
-    return data.user;
-  });
-  if (userInfo) {
-    writeFileSync(USER_INFO_FILE, JSON.stringify(userInfo, null, 2));
-    console.log(`Authenticated as ${userInfo.handle} (${userInfo.did})`);
-  }
   await page.context().storageState({ path: AUTH_FILE });
 });

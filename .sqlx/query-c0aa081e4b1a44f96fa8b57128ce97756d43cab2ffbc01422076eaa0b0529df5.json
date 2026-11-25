@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO ingester.notifications (recipient_did, actor_did, kind, subject_uri, reference_uri)\n        SELECT $1, refs.did, refs.kind, $2, refs.uri\n        FROM (\n            SELECT did, 'like' AS kind, uri FROM likes WHERE subject_uri = $2\n            UNION ALL\n            SELECT did, 'identification', uri FROM identifications WHERE subject_uri = $2\n            UNION ALL\n            SELECT did, 'comment', uri FROM comments WHERE subject_uri = $2\n        ) refs\n        WHERE refs.did <> $1\n        ON CONFLICT DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c0aa081e4b1a44f96fa8b57128ce97756d43cab2ffbc01422076eaa0b0529df5"
+}

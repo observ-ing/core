@@ -20,11 +20,19 @@ import ClearIcon from "@mui/icons-material/Clear";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import { KingdomSelect } from "../../common/KingdomSelect";
+import { MatchedSynonym } from "../../common/MatchedSynonym";
 import { RankSelect } from "../../common/RankSelect";
 import { SearchAdornment, searchFieldSx } from "../../common/SearchField";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import { TaxonThumbnail } from "../../common/TaxonThumbnail";
-import { coverImageSx } from "../../common/layoutSx";
+import {
+  coverImageSx,
+  thumbnailFrameSx,
+  touchTarget,
+  tallRowMinHeight,
+  touchTargetLarge,
+  panelRadius,
+} from "../../common/layoutSx";
 import { VisualId } from "../../identification/VisualId";
 import { useDebouncedTaxaSearch } from "../../../hooks/useDebouncedTaxaSearch";
 import { EMPTY_TAXON, type BatchObservation, type BatchTaxon } from "../../../lib/batchUpload";
@@ -76,7 +84,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
             startIcon={<CheckIcon />}
             disabled={!kingdom}
             onClick={() => onChoose({ name: unmatched, match: null, kingdom, rank })}
-            sx={{ minHeight: 48 }}
+            sx={{ minHeight: touchTargetLarge }}
           >
             Use this name
           </Button>
@@ -120,7 +128,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
       {typed ? (
         <>
           {suggestions.length > 0 && (
-            <Paper variant="outlined" sx={{ borderRadius: 1.5, overflow: "hidden" }}>
+            <Paper variant="outlined" sx={{ borderRadius: panelRadius, overflow: "hidden" }}>
               <List disablePadding aria-label="Search results">
                 {suggestions.map((taxon) => (
                   <ListItemButton
@@ -134,7 +142,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
                         rank: "",
                       })
                     }
-                    sx={{ gap: 1.5, minHeight: 64 }}
+                    sx={{ gap: 1.5, minHeight: tallRowMinHeight }}
                   >
                     <TaxonThumbnail src={taxon.photoUrl} size={44} emptyBgcolor="action.hover" />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -149,18 +157,18 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
                       >
                         {taxon.scientificName}
                       </Typography>
-                      {/* As in TaxaAutocompleteView: a synonym names what it stands for. */}
-                      {taxon.isSynonym ? (
+                      {taxon.commonName && (
                         <Typography variant="body2" noWrap sx={{ color: "text.secondary" }}>
-                          Synonym{taxon.acceptedName ? ` of ${taxon.acceptedName}` : ""}
+                          {taxon.commonName}
                         </Typography>
-                      ) : (
-                        taxon.commonName && (
-                          <Typography variant="body2" noWrap sx={{ color: "text.secondary" }}>
-                            {taxon.commonName}
-                          </Typography>
-                        )
                       )}
+                      {/* As in TaxaAutocompleteView: say why a search for a synonym found this. */}
+                      <MatchedSynonym
+                        taxon={taxon}
+                        variant="body2"
+                        noWrap
+                        sx={{ color: "text.secondary" }}
+                      />
                     </Box>
                     <Typography
                       variant="caption"
@@ -185,7 +193,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
               border: 1,
               borderStyle: "dashed",
               borderColor: "text.secondary",
-              borderRadius: 1.5,
+              borderRadius: panelRadius,
               textAlign: "left",
               justifyContent: "flex-start",
             }}
@@ -230,15 +238,13 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
                 p: 1.5,
                 border: 1,
                 borderColor: "primary.main",
-                borderRadius: 1.5,
+                borderRadius: panelRadius,
                 bgcolor: "background.paper",
                 textAlign: "left",
                 justifyContent: "flex-start",
               }}
             >
-              <Box
-                sx={{ width: 56, height: 56, flexShrink: 0, borderRadius: 1, overflow: "hidden" }}
-              >
+              <Box sx={{ width: 56, height: 56, flexShrink: 0, ...thumbnailFrameSx }}>
                 <Box component="img" src={cover.previewUrl} alt="" sx={coverImageSx} />
               </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -259,7 +265,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
               color="error"
               startIcon={<DeleteOutlineIcon />}
               onClick={() => onChoose(EMPTY_TAXON)}
-              sx={{ alignSelf: "flex-start", minHeight: 44 }}
+              sx={{ alignSelf: "flex-start", minHeight: touchTarget }}
             >
               Remove identification
             </Button>

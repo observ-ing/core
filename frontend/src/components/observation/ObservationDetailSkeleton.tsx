@@ -1,6 +1,7 @@
 import { Box, Divider, Skeleton, Stack, Typography } from "@mui/material";
 import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
 import { IconButtonSkeleton } from "../common/IconButtonSkeleton";
+import { SectionCardSkeleton } from "../common/SectionCardSkeleton";
 import { UserCardSkeleton } from "../common/UserCardSkeleton";
 import {
   OBSERVATION_PHOTO_LICENSE_SX,
@@ -69,7 +70,7 @@ export function ObservationDetailSkeleton() {
         }}
       >
         {SECTION_CARD_HEIGHTS.map((height) => (
-          <Skeleton key={height} variant="rectangular" height={height} sx={{ borderRadius: 2 }} />
+          <SectionCardSkeleton key={height} height={height} />
         ))}
       </Box>
     </Box>

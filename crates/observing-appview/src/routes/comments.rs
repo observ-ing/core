@@ -36,7 +36,7 @@ pub struct CreateCommentRequest {
     path = "/api/comments",
     tag = "comments",
     request_body = CreateCommentRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
         (status = 400, description = "Empty or over-long body, or an invalid URI or CID", body = ErrorResponse),

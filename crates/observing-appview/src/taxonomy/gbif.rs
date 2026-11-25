@@ -771,8 +771,8 @@ impl GbifClient {
     /// Uses the full-text search endpoint over the GBIF Backbone Taxonomy
     /// only, so results have authoritative taxonomic status.
     async fn search_gbif(&self, query: &str, limit: u32) -> Vec<TaxonResult> {
-        let data = match self.search_backbone(query, limit as i32).await {
-            Ok(d) => d,
+        let basic_results = match self.search_backbone_taxa(query, limit).await {
+            Ok(r) => r,
             Err(e) => {
                 warn!(query = %query, error = ?e, "GBIF search failed");
                 return vec![];
@@ -780,21 +780,10 @@ impl GbifClient {
         };
 
         // Extract GBIF keys for Wikidata image lookup.
-        let keys: Vec<u64> = data
-            .iter()
-            .filter_map(|item| item.key.map(|k| k as u64))
-            .collect();
+        let keys: Vec<u64> = basic_results.iter().filter_map(|(_, key)| *key).collect();
 
         // Fetch photos from Wikidata in a single batched SPARQL query.
         let photos = self.wikidata.get_images_for_keys(&keys, 100).await;
-
-        let basic_results: Vec<(TaxonResult, Option<u64>)> = data
-            .iter()
-            .map(|item| {
-                let key = item.key.map(|k| k as u64);
-                (self.search_result_to_taxon(item), key)
-            })
-            .collect();
 
         let enriched_futures = basic_results.into_iter().map(|(result, key)| {
             let photo_url = key.and_then(|k| photos.get(&k).cloned());
@@ -810,6 +799,118 @@ impl GbifClient {
         });
 
         futures::future::join_all(enriched_futures).await
+    }
+
+    /// Backbone search results as taxa, each with its GBIF key, with
+    /// synonyms resolved and the results ranked (#1026).
+    ///
+    /// A synonym whose accepted taxon is already in the results is dropped.
+    /// Otherwise the accepted taxon takes the synonym's place, unless an
+    /// earlier synonym already brought it in, in which case this one is
+    /// dropped too, so no taxon is listed twice. A synonym whose accepted
+    /// taxon GBIF can't return stays as it is. When a taxon's best-matching
+    /// synonym matches the query better than its own names do, that synonym
+    /// becomes its `matched_synonym`, so a search for "Eriobotrya japonica"
+    /// can say why *Rhaphiolepis bibas* came back.
+    ///
+    /// GBIF's relevance order counts matches in authorship and descriptions,
+    /// so "mallard" puts a snail described by Mallard & Robin first. Results
+    /// are re-ranked by [`NameMatch`] against their scientific and common
+    /// names, counting the names of any synonym a taxon stands in for, and
+    /// within that infraspecific taxa come after the rest. The sort is
+    /// stable, so GBIF's order breaks ties.
+    async fn search_backbone_taxa(
+        &self,
+        query: &str,
+        limit: u32,
+    ) -> Result<Vec<(TaxonResult, Option<u64>)>, GbifError> {
+        let data = self.search_backbone(query, limit as i32).await?;
+
+        let mut listed: HashSet<i32> = data
+            .iter()
+            .filter(|item| item.accepted_key.is_none())
+            .filter_map(|item| item.key)
+            .collect();
+        // Best-matching synonym of each accepted taxon, by the accepted
+        // taxon's key, whether it was dropped or replaced. GBIF's order
+        // breaks ties.
+        let mut best_synonym: HashMap<u64, (NameMatch, &str)> = HashMap::new();
+        let mut slots: Vec<(&NameUsageSearchResult, Option<i32>, NameMatch)> = Vec::new();
+        for item in &data {
+            let item_match = NameMatch::of(query, search_result_names(item));
+            if let Some(accepted) = item.accepted_key {
+                let name = item
+                    .canonical_name
+                    .as_deref()
+                    .or(item.scientific_name.as_deref())
+                    .unwrap_or("");
+                best_synonym
+                    .entry(accepted as u64)
+                    .and_modify(|best| {
+                        if item_match < best.0 {
+                            *best = (item_match, name);
+                        }
+                    })
+                    .or_insert((item_match, name));
+            }
+            match item.accepted_key {
+                Some(accepted) if !listed.insert(accepted) => {}
+                accepted => slots.push((item, accepted, item_match)),
+            }
+        }
+
+        let resolved = slots
+            .into_iter()
+            .map(|(item, accepted, item_match)| async move {
+                let accepted_usage = match accepted {
+                    Some(key) => match self.get_name_usage(key).await {
+                        Ok(usage) => usage,
+                        Err(e) => {
+                            warn!(key, error = ?e, "GBIF accepted usage lookup failed");
+                            None
+                        }
+                    },
+                    None => None,
+                };
+                match accepted_usage {
+                    Some(usage) => (
+                        self.gbif_to_taxon(&usage),
+                        Some(usage.key as u64),
+                        NameMatch::of(query, name_usage_names(&usage)),
+                    ),
+                    None => (
+                        self.search_result_to_taxon(item),
+                        item.key.map(|k| k as u64),
+                        item_match,
+                    ),
+                }
+            });
+        let mut ranked: Vec<_> = futures::future::join_all(resolved)
+            .await
+            .into_iter()
+            .map(|(taxon, key, own_match)| {
+                let synonym = key.and_then(|k| best_synonym.get(&k));
+                let name_match = synonym.map_or(own_match, |(m, _)| own_match.min(*m));
+                let matched_synonym = synonym
+                    .filter(|(m, _)| *m < own_match)
+                    .map(|(_, name)| name.to_string());
+                (
+                    TaxonResult {
+                        matched_synonym,
+                        ..taxon
+                    },
+                    key,
+                    name_match,
+                )
+            })
+            .collect();
+        ranked.sort_by_key(|(taxon, _, name_match)| {
+            (*name_match, is_infraspecific_rank(&taxon.rank))
+        });
+        Ok(ranked
+            .into_iter()
+            .map(|(taxon, key, _)| (taxon, key))
+            .collect())
     }
 
     /// Build ancestors from a v1 NameUsage's denormalised taxonomy fields.
@@ -874,6 +975,7 @@ impl GbifClient {
             species: item.species.clone(),
             source: "gbif".to_string(),
             conservation_status: None,
+            matched_synonym: None,
         }
     }
 
@@ -914,6 +1016,7 @@ impl GbifClient {
             species: item.species.clone(),
             source: "gbif".to_string(),
             conservation_status: None,
+            matched_synonym: None,
         }
     }
 
@@ -984,6 +1087,7 @@ impl GbifClient {
             species: classification_by_rank.get("SPECIES").cloned(),
             source: "gbif".to_string(),
             conservation_status,
+            matched_synonym: None,
         }
     }
 }
@@ -992,6 +1096,86 @@ impl Default for GbifClient {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// How well a taxon's names match a search query, best first.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum NameMatch {
+    /// A name is the query, ignoring case and spacing.
+    Exact,
+    /// A name contains the query.
+    Partial,
+    /// No name contains the query; GBIF matched something else, such as an
+    /// author or a description.
+    None,
+}
+
+impl NameMatch {
+    fn of<'a>(query: &str, names: impl IntoIterator<Item = &'a str>) -> Self {
+        let query = normalize_name(query);
+        names
+            .into_iter()
+            .map(|name| {
+                let name = normalize_name(name);
+                if name == query {
+                    Self::Exact
+                } else if name.contains(&query) {
+                    Self::Partial
+                } else {
+                    Self::None
+                }
+            })
+            .min()
+            .unwrap_or(Self::None)
+    }
+}
+
+fn normalize_name(name: &str) -> String {
+    name.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
+/// The scientific and common names of a search hit. The scientific name is
+/// the canonical one, without authorship: an author isn't a name of the
+/// taxon. Hybrids have no canonical name, but nor do they have authorship.
+fn search_result_names(item: &NameUsageSearchResult) -> impl Iterator<Item = &str> {
+    item.canonical_name
+        .as_deref()
+        .or(item.scientific_name.as_deref())
+        .into_iter()
+        .chain(
+            item.vernacular_names
+                .iter()
+                .map(|v| v.vernacular_name.as_str()),
+        )
+}
+
+/// The scientific and common names of a name usage, as for
+/// [`search_result_names`].
+fn name_usage_names(usage: &NameUsage) -> impl Iterator<Item = &str> {
+    std::iter::once(
+        usage
+            .canonical_name
+            .as_deref()
+            .unwrap_or(usage.scientific_name.as_str()),
+    )
+    .chain(usage.vernacular_name.as_deref())
+}
+
+/// Ranks below species, as `TaxonResult::rank` spells them.
+fn is_infraspecific_rank(rank: &str) -> bool {
+    matches!(
+        rank,
+        "subspecies"
+            | "variety"
+            | "subvariety"
+            | "form"
+            | "subform"
+            | "infraspecific_name"
+            | "infrasubspecific_name"
+    )
 }
 
 /// Pick the best vernacular name for a search result.
@@ -1829,5 +2013,480 @@ mod tests {
             .expect("a 404 is not an error");
 
         assert!(names.is_empty());
+    }
+
+    // ---------- synonyms in search results (#1026) ----------
+
+    /// One backbone search hit in the wire format. `accepted_key` makes it a
+    /// synonym of that usage.
+    fn search_hit(
+        key: i32,
+        name: &str,
+        rank: &str,
+        accepted_key: Option<i32>,
+    ) -> serde_json::Value {
+        json!({
+            "key": key,
+            "canonicalName": name,
+            "scientificName": name,
+            "rank": rank,
+            "kingdom": "Animalia",
+            "synonym": accepted_key.is_some(),
+            "taxonomicStatus": if accepted_key.is_some() { "SYNONYM" } else { "ACCEPTED" },
+            "acceptedKey": accepted_key,
+            "descriptions": [],
+            "habitats": [],
+            "nomenclaturalStatus": [],
+            "threatStatuses": [],
+            "vernacularNames": [],
+            "higherClassificationMap": {}
+        })
+    }
+
+    async fn mount_search(server: &MockServer, hits: Vec<serde_json::Value>) {
+        Mock::given(method("GET"))
+            .and(path("/v1/species/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "offset": 0,
+                "limit": 10,
+                "endOfRecords": true,
+                "results": hits
+            })))
+            .mount(server)
+            .await;
+    }
+
+    /// `/v1/species/2480873` as GBIF returns it, trimmed.
+    async fn mount_snowy_egret_usage(server: &MockServer, expected_calls: u64) {
+        Mock::given(method("GET"))
+            .and(path("/v1/species/2480873"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "key": 2480873,
+                "datasetKey": "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c",
+                "kingdom": "Animalia",
+                "phylum": "Chordata",
+                "class": "Aves",
+                "order": "Pelecaniformes",
+                "family": "Ardeidae",
+                "genus": "Egretta",
+                "species": "Egretta thula",
+                "scientificName": "Egretta thula (Molina, 1782)",
+                "canonicalName": "Egretta thula",
+                "vernacularName": "Snowy Egret",
+                "rank": "SPECIES",
+                "origin": "SOURCE",
+                "taxonomicStatus": "ACCEPTED",
+                "nomenclaturalStatus": [],
+                "issues": []
+            })))
+            .expect(expected_calls)
+            .mount(server)
+            .await;
+    }
+
+    fn names(results: &[(TaxonResult, Option<u64>)]) -> Vec<&str> {
+        results
+            .iter()
+            .map(|(t, _)| t.scientific_name.as_str())
+            .collect()
+    }
+
+    /// GBIF's actual order for "snowy egret": the accepted species comes after
+    /// two of its synonyms. The synonyms add nothing, so they go, and GBIF is
+    /// not asked about a taxon the results already hold.
+    #[tokio::test]
+    async fn search_drops_synonyms_of_an_accepted_taxon_in_the_results() {
+        let server = MockServer::start().await;
+        mount_search(
+            &server,
+            vec![
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(7190966, "Egretta thula thula", "SUBSPECIES", None),
+                search_hit(9693910, "Leucophoyx thula", "SPECIES", Some(2480873)),
+                search_hit(2480873, "Egretta thula", "SPECIES", None),
+            ],
+        )
+        .await;
+        mount_snowy_egret_usage(&server, 0).await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa("snowy egret", 10)
+            .await
+            .expect("search succeeds");
+
+        // Ranking then puts the species ahead of its subspecies.
+        assert_eq!(
+            names(&results),
+            vec!["Egretta thula", "Egretta thula thula"]
+        );
+    }
+
+    /// A synonym whose accepted taxon isn't in the results stands in for it,
+    /// in the synonym's place.
+    #[tokio::test]
+    async fn search_replaces_a_synonym_with_its_missing_accepted_taxon() {
+        let server = MockServer::start().await;
+        mount_search(
+            &server,
+            vec![
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(7190966, "Egretta thula thula", "SUBSPECIES", None),
+            ],
+        )
+        .await;
+        mount_snowy_egret_usage(&server, 1).await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa("ardea thula", 10)
+            .await
+            .expect("search succeeds");
+
+        assert_eq!(
+            names(&results),
+            vec!["Egretta thula", "Egretta thula thula"]
+        );
+        let (accepted, key) = &results[0];
+        assert_eq!(*key, Some(2480873));
+        assert_eq!(
+            accepted.taxon_id.as_deref(),
+            Some(gbif_taxon_uri(2480873).as_str())
+        );
+        assert_eq!(accepted.common_name.as_deref(), Some("Snowy Egret"));
+        assert_eq!(accepted.rank, "species");
+    }
+
+    /// Two synonyms of the same missing taxon: replacing both would list it
+    /// twice, so only the first is replaced and the second dropped.
+    #[tokio::test]
+    async fn search_replaces_only_the_first_of_several_synonyms_of_one_taxon() {
+        let server = MockServer::start().await;
+        mount_search(
+            &server,
+            vec![
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(7190966, "Egretta thula thula", "SUBSPECIES", None),
+                search_hit(9693910, "Leucophoyx thula", "SPECIES", Some(2480873)),
+            ],
+        )
+        .await;
+        mount_snowy_egret_usage(&server, 1).await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa("thula", 10)
+            .await
+            .expect("search succeeds");
+
+        assert_eq!(
+            names(&results),
+            vec!["Egretta thula", "Egretta thula thula"]
+        );
+    }
+
+    /// If GBIF can't produce the accepted taxon, showing the synonym beats
+    /// showing nothing.
+    #[tokio::test]
+    async fn search_keeps_a_synonym_whose_accepted_taxon_cannot_be_fetched() {
+        let server = MockServer::start().await;
+        mount_search(
+            &server,
+            vec![search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873))],
+        )
+        .await;
+        Mock::given(method("GET"))
+            .and(path("/v1/species/2480873"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa("ardea thula", 10)
+            .await
+            .expect("search succeeds");
+
+        assert_eq!(names(&results), vec!["Ardea thula"]);
+    }
+
+    // ---------- naming the synonym that matched ----------
+
+    fn matched_synonyms(results: &[(TaxonResult, Option<u64>)]) -> Vec<Option<&str>> {
+        results
+            .iter()
+            .map(|(t, _)| t.matched_synonym.as_deref())
+            .collect()
+    }
+
+    /// A search for a synonym's name lists the accepted taxon, which would
+    /// look like a miss without the synonym to say why it's there.
+    #[tokio::test]
+    async fn search_names_the_synonym_an_accepted_taxon_replaced() {
+        let server = MockServer::start().await;
+        mount_search(
+            &server,
+            vec![search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873))],
+        )
+        .await;
+        mount_snowy_egret_usage(&server, 1).await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa("ardea thula", 10)
+            .await
+            .expect("search succeeds");
+
+        assert_eq!(names(&results), vec!["Egretta thula"]);
+        assert_eq!(matched_synonyms(&results), vec![Some("Ardea thula")]);
+    }
+
+    /// The same goes for a synonym dropped because its accepted taxon is
+    /// already in the results.
+    #[tokio::test]
+    async fn search_names_a_dropped_synonym_that_matched() {
+        let results = search_with_synonyms(
+            vec![
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(2480873, "Egretta thula", "SPECIES", None),
+            ],
+            "ardea",
+        )
+        .await;
+
+        assert_eq!(matched_synonyms(&results), vec![Some("Ardea thula")]);
+    }
+
+    /// Of several matching synonyms, the one that matches best is named.
+    #[tokio::test]
+    async fn search_names_the_best_matching_synonym() {
+        let results = search_with_synonyms(
+            vec![
+                search_hit(9693910, "Leucophoyx thula", "SPECIES", Some(2480873)),
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(2480873, "Egretta thula", "SPECIES", None),
+            ],
+            "ardea thula",
+        )
+        .await;
+
+        assert_eq!(matched_synonyms(&results), vec![Some("Ardea thula")]);
+    }
+
+    /// A taxon that matches the query as well by its own names needs no
+    /// synonym to explain it.
+    #[tokio::test]
+    async fn search_names_no_synonym_when_the_taxon_matches_as_well() {
+        let results = search_with_synonyms(
+            vec![
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(2480873, "Egretta thula", "SPECIES", None),
+            ],
+            "thula",
+        )
+        .await;
+
+        assert_eq!(matched_synonyms(&results), vec![None]);
+    }
+
+    async fn search_with_synonyms(
+        hits: Vec<serde_json::Value>,
+        query: &str,
+    ) -> Vec<(TaxonResult, Option<u64>)> {
+        let server = MockServer::start().await;
+        mount_search(&server, hits).await;
+        GbifClient::with_base_url(&server.uri())
+            .search_backbone_taxa(query, 10)
+            .await
+            .expect("search succeeds")
+    }
+
+    // ---------- ranking search results (#1026) ----------
+
+    /// `hit` with these vernacular names, untagged.
+    fn with_vernacular(mut hit: serde_json::Value, names: &[&str]) -> serde_json::Value {
+        hit["vernacularNames"] = names
+            .iter()
+            .map(|n| json!({ "vernacularName": n }))
+            .collect();
+        hit
+    }
+
+    /// `/v1/species/{key}` for a minimal accepted species.
+    async fn mount_usage(server: &MockServer, key: i32, name: &str, vernacular: &str) {
+        Mock::given(method("GET"))
+            .and(path(format!("/v1/species/{key}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "key": key,
+                "datasetKey": "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c",
+                "kingdom": "Animalia",
+                "scientificName": name,
+                "canonicalName": name,
+                "vernacularName": vernacular,
+                "rank": "SPECIES",
+                "origin": "SOURCE",
+                "taxonomicStatus": "ACCEPTED",
+                "nomenclaturalStatus": [],
+                "issues": []
+            })))
+            .mount(server)
+            .await;
+    }
+
+    async fn search_with(hits: Vec<serde_json::Value>, query: &str) -> Vec<String> {
+        let server = MockServer::start().await;
+        mount_search(&server, hits).await;
+        search_on(&server, query).await
+    }
+
+    async fn search_on(server: &MockServer, query: &str) -> Vec<String> {
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa(query, 10)
+            .await
+            .expect("search succeeds");
+        names(&results).into_iter().map(String::from).collect()
+    }
+
+    /// A species named exactly by its common name comes before its
+    /// subspecies, which GBIF lists first.
+    #[tokio::test]
+    async fn search_puts_a_species_before_its_subspecies() {
+        let results = search_with(
+            vec![
+                with_vernacular(
+                    search_hit(7190966, "Egretta thula thula", "SUBSPECIES", None),
+                    &["Snowy Egret"],
+                ),
+                with_vernacular(
+                    search_hit(6178109, "Egretta thula brewsteri", "SUBSPECIES", None),
+                    &["Snowy Egret"],
+                ),
+                with_vernacular(
+                    search_hit(2480873, "Egretta thula", "SPECIES", None),
+                    &["Snowy Egret"],
+                ),
+            ],
+            "snowy egret",
+        )
+        .await;
+
+        assert_eq!(
+            results,
+            [
+                "Egretta thula",
+                "Egretta thula thula",
+                "Egretta thula brewsteri"
+            ]
+        );
+    }
+
+    /// A query that names a subspecies gets the subspecies first.
+    #[tokio::test]
+    async fn search_puts_a_subspecies_first_when_the_query_names_it() {
+        let results = search_with(
+            vec![
+                search_hit(5219243, "Vulpes vulpes", "SPECIES", None),
+                search_hit(7193880, "Vulpes vulpes vulpes", "SUBSPECIES", None),
+            ],
+            "Vulpes vulpes vulpes",
+        )
+        .await;
+
+        assert_eq!(results, ["Vulpes vulpes vulpes", "Vulpes vulpes"]);
+    }
+
+    /// GBIF's first hits for "mallard", trimmed. The species only arrives as
+    /// the accepted taxon of a synonym, and the top hit is a snail whose only
+    /// tie to the query is its author, Mallard. Names that match the query
+    /// come first, an exact match before a partial one, and a replaced
+    /// synonym's names still count for the taxon standing in for it.
+    #[tokio::test]
+    async fn search_ranks_mallard_first_for_mallard() {
+        let server = MockServer::start().await;
+        let mut snail = search_hit(
+            7915485,
+            "Leucozonia trinidadensis",
+            "SPECIES",
+            Some(2303996),
+        );
+        // The author is in the scientific name, but isn't a name of the taxon.
+        snail["scientificName"] = json!("Leucozonia trinidadensis Mallard & Robin, 2005");
+        mount_search(
+            &server,
+            vec![
+                snail,
+                with_vernacular(
+                    search_hit(9442667, "Anas platyrhynchos platyrhynchos", "FORM", None),
+                    &["Mallard (Northern)"],
+                ),
+                with_vernacular(
+                    search_hit(10665544, "Anas oustaleti", "SPECIES", Some(9761484)),
+                    &["Mariana Mallard"],
+                ),
+                with_vernacular(
+                    search_hit(
+                        6178366,
+                        "Anas platyrhynchos diazi",
+                        "SUBSPECIES",
+                        Some(2498136),
+                    ),
+                    &["Mallard (Mexican)"],
+                ),
+                with_vernacular(
+                    search_hit(
+                        7191113,
+                        "Anas platyrhynchos platyrhynchos",
+                        "SUBSPECIES",
+                        None,
+                    ),
+                    &["Common Mallard"],
+                ),
+                with_vernacular(
+                    search_hit(
+                        10853972,
+                        "Mareca strepera x Anas platyrhynchos",
+                        "SPECIES",
+                        None,
+                    ),
+                    &["Gadwall x Mallard"],
+                ),
+            ],
+        )
+        .await;
+        mount_usage(&server, 2303996, "Leucozonia nassa", "chestnut latirus").await;
+        mount_usage(&server, 9761484, "Anas platyrhynchos", "Mallard").await;
+        mount_usage(&server, 2498136, "Anas diazi", "Mexican Duck").await;
+
+        let results = search_on(&server, "mallard").await;
+
+        assert_eq!(
+            results,
+            [
+                "Anas platyrhynchos",
+                "Anas diazi",
+                "Mareca strepera x Anas platyrhynchos",
+                "Anas platyrhynchos platyrhynchos",
+                "Anas platyrhynchos platyrhynchos",
+                "Leucozonia nassa",
+            ]
+        );
+    }
+
+    /// A dropped synonym's names count for its accepted taxon, so searching
+    /// an old name still puts the taxon it now goes by first.
+    #[tokio::test]
+    async fn search_ranks_a_taxon_by_the_names_of_its_dropped_synonyms() {
+        let results = search_with(
+            vec![
+                search_hit(9693910, "Leucophoyx thula", "SPECIES", Some(2480873)),
+                search_hit(2480879, "Egretta tricolor", "SPECIES", None),
+                search_hit(2480873, "Egretta thula", "SPECIES", None),
+            ],
+            "Leucophoyx thula",
+        )
+        .await;
+
+        assert_eq!(results, ["Egretta thula", "Egretta tricolor"]);
     }
 }

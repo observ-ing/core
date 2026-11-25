@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { configureStore } from "@reduxjs/toolkit";
-import uiReducer, {
+import { makeStore } from "./index";
+import {
   openLoginModal,
   closeLoginModal,
   openUploadModal,
@@ -19,11 +19,6 @@ import uiReducer, {
 import type { Occurrence } from "../services/types";
 
 describe("uiSlice", () => {
-  const createTestStore = () =>
-    configureStore({
-      reducer: { ui: uiReducer },
-    });
-
   const mockOccurrence: Occurrence = {
     uri: "at://did:plc:test/bio.lexicons.temp.v0-1.occurrence/123",
     cid: "cid123",
@@ -81,14 +76,14 @@ describe("uiSlice", () => {
 
   describe("login modal", () => {
     it("opens login modal", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(openLoginModal());
 
       expect(store.getState().ui.loginModalOpen).toBe(true);
     });
 
     it("closes login modal", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(openLoginModal());
       store.dispatch(closeLoginModal());
 
@@ -98,7 +93,7 @@ describe("uiSlice", () => {
 
   describe("upload modal", () => {
     it("opens upload modal for new occurrence", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(openUploadModal());
 
       const state = store.getState().ui;
@@ -107,7 +102,7 @@ describe("uiSlice", () => {
     });
 
     it("opens edit modal with occurrence", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(openEditModal(mockOccurrence));
 
       const state = store.getState().ui;
@@ -116,7 +111,7 @@ describe("uiSlice", () => {
     });
 
     it("clears editing occurrence when opening for new upload", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(openEditModal(mockOccurrence));
       store.dispatch(openUploadModal());
 
@@ -124,7 +119,7 @@ describe("uiSlice", () => {
     });
 
     it("closes upload modal and clears editing occurrence", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(openEditModal(mockOccurrence));
       store.dispatch(closeUploadModal());
 
@@ -136,14 +131,14 @@ describe("uiSlice", () => {
 
   describe("delete confirm", () => {
     it("opens delete confirm with occurrence", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(openDeleteConfirm(mockOccurrence));
 
       expect(store.getState().ui.deleteConfirmObservation).toEqual(mockOccurrence);
     });
 
     it("closes delete confirm", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(openDeleteConfirm(mockOccurrence));
       store.dispatch(closeDeleteConfirm());
 
@@ -153,19 +148,19 @@ describe("uiSlice", () => {
 
   describe("deleting observation", () => {
     it("defaults to no observation being deleted", () => {
-      const store = createTestStore();
+      const store = makeStore();
       expect(store.getState().ui.deletingObservationUri).toBeNull();
     });
 
     it("records the uri whose delete is in progress", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(startDeletingObservation(mockOccurrence.uri));
 
       expect(store.getState().ui.deletingObservationUri).toBe(mockOccurrence.uri);
     });
 
     it("clears the in-progress uri", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(startDeletingObservation(mockOccurrence.uri));
       store.dispatch(clearDeletingObservation());
 
@@ -175,7 +170,7 @@ describe("uiSlice", () => {
 
   describe("toasts", () => {
     it("adds success toast", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(addToast({ message: "Success!", type: "success" }));
 
       const toasts = store.getState().ui.toasts;
@@ -186,7 +181,7 @@ describe("uiSlice", () => {
     });
 
     it("adds error toast", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(addToast({ message: "Error occurred", type: "error" }));
 
       const toasts = store.getState().ui.toasts;
@@ -195,7 +190,7 @@ describe("uiSlice", () => {
     });
 
     it("adds multiple toasts", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(addToast({ message: "First", type: "success" }));
       store.dispatch(addToast({ message: "Second", type: "error" }));
 
@@ -203,7 +198,7 @@ describe("uiSlice", () => {
     });
 
     it("removes toast by id", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(addToast({ message: "Toast 1", type: "success" }));
 
       const toastsBefore = store.getState().ui.toasts;
@@ -217,7 +212,7 @@ describe("uiSlice", () => {
     });
 
     it("handles removing non-existent toast id", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(addToast({ message: "Toast", type: "success" }));
       store.dispatch(removeToast("non-existent-id"));
 
@@ -227,7 +222,7 @@ describe("uiSlice", () => {
 
   describe("current location", () => {
     it("sets current location", () => {
-      const store = createTestStore();
+      const store = makeStore();
       const location = { lat: 40.7128, lng: -74.006 };
       store.dispatch(setCurrentLocation(location));
 
@@ -235,7 +230,7 @@ describe("uiSlice", () => {
     });
 
     it("clears current location with null", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(setCurrentLocation({ lat: 40, lng: -74 }));
       store.dispatch(setCurrentLocation(null));
 
@@ -245,7 +240,7 @@ describe("uiSlice", () => {
 
   describe("theme", () => {
     it("sets theme mode to dark", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(setThemeMode("dark"));
 
       const state = store.getState().ui;
@@ -255,7 +250,7 @@ describe("uiSlice", () => {
     });
 
     it("sets theme mode to light", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(setThemeMode("light"));
 
       const state = store.getState().ui;
@@ -264,7 +259,7 @@ describe("uiSlice", () => {
     });
 
     it("sets theme mode to system", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(setThemeMode("system"));
 
       const state = store.getState().ui;
@@ -275,7 +270,7 @@ describe("uiSlice", () => {
     });
 
     it("updateSystemTheme updates effective theme when mode is system", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(setThemeMode("system"));
 
       // Change system preference to dark
@@ -294,7 +289,7 @@ describe("uiSlice", () => {
     });
 
     it("updateSystemTheme does nothing when mode is not system", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(setThemeMode("light"));
 
       vi.stubGlobal(
@@ -313,7 +308,7 @@ describe("uiSlice", () => {
     });
 
     it("persists theme to localStorage", () => {
-      const store = createTestStore();
+      const store = makeStore();
       store.dispatch(setThemeMode("dark"));
 
       expect(localStorage.setItem).toHaveBeenCalledWith("observing-theme-mode", "dark");

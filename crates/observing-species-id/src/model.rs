@@ -6,7 +6,8 @@
 use crate::embeddings::SpeciesEmbeddings;
 use crate::error::{Result, SpeciesIdError};
 use crate::preprocessing;
-use crate::types::SpeciesSuggestion;
+use crate::rollup::{RollupConfig, TaxonRollup};
+use crate::types::Identification;
 use ndarray::{Array1, Array4};
 use ort::session::{builder::GraphOptimizationLevel, Session};
 use ort::value::Value;
@@ -17,7 +18,7 @@ use tracing::{info, warn};
 
 /// ONNX Runtime C API version the linked `ort` crate requires, which must not
 /// exceed the minor version of the shared library baked into the runtime image
-/// (`onnxruntime-linux-x64-1.27.1` in the species-id stage of
+/// (`microsoft.ml.onnxruntime` 1.27.1 in the species-id stage of
 /// infra/docker/Dockerfile).
 ///
 /// `ort` picks this up from its default `api-NN` feature, so a routine
@@ -25,8 +26,9 @@ use tracing::{info, warn};
 /// happens `ort` panics on dylib load (`BadVersion`) before the server binds
 /// its port, and the only symptom is a Cloud Run "container failed to start and
 /// listen on PORT" deploy failure. This assertion turns that into a build
-/// error: bump the onnxruntime download in infra/docker/Dockerfile to a
-/// matching 1.NN.x release and update this constant together.
+/// error: bump the onnxruntime download (and its checksum) in
+/// infra/docker/Dockerfile to a matching 1.NN.x release and update this
+/// constant together.
 const _: () = assert!(ort::MINOR_VERSION == 27);
 
 /// Default additive boost applied to in-range species when lat/lon is
@@ -41,6 +43,7 @@ pub struct BioclipModel {
     species: SpeciesEmbeddings,
     geo_index: Option<SpeciesRangeIndex>,
     geo_boost: f32,
+    rollup: TaxonRollup,
     pub version: String,
 }
 
@@ -74,6 +77,7 @@ impl BioclipModel {
         info!("ONNX vision encoder loaded");
 
         let species = SpeciesEmbeddings::load(model_dir)?;
+        let rollup = TaxonRollup::new(species.labels(), RollupConfig::from_env());
 
         // Geo index is optional: if the artifact isn't present we fall back
         // to visual-only ranking (prior behavior).
@@ -110,6 +114,7 @@ impl BioclipModel {
             species,
             geo_index,
             geo_boost,
+            rollup,
             version,
         })
     }
@@ -126,19 +131,23 @@ impl BioclipModel {
     /// selection. Missing lat/lon or missing index falls back to visual-only
     /// ranking.
     ///
-    /// Returns the top-K species suggestions sorted by descending confidence.
+    /// Returns the top-K species suggestions sorted by descending confidence,
+    /// plus a broader taxon when no species is confident (see [`TaxonRollup`]).
     pub fn identify(
         &self,
         image_bytes: &[u8],
         lat_lon: Option<(f64, f64)>,
         limit: usize,
-    ) -> Result<Vec<SpeciesSuggestion>> {
+    ) -> Result<Identification> {
         let input_tensor = preprocessing::preprocess_image(image_bytes)?;
         let embedding = self.run_vision_encoder(input_tensor)?;
         let mut scores = self.species.similarities(&embedding).to_vec();
         let in_range = self.in_range_at(lat_lon);
         self.apply_geo_prior(&mut scores, lat_lon, in_range);
-        Ok(self.species.top_k_from_scores(&scores, limit, in_range))
+        Ok(Identification {
+            suggestions: self.species.top_k_from_scores(&scores, limit, in_range),
+            fallback: self.rollup.fallback(&scores),
+        })
     }
 
     /// Sorted-ascending slice of species indices whose iNat range covers

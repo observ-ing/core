@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT did, default_license, basemap, crosspost_inaturalist,\n               crosspost_inaturalist_require_photos, updated_at\n        FROM user_preferences\n        WHERE did = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "did",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "user_preferences",
+            "name": "did"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "default_license",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "user_preferences",
+            "name": "default_license"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "basemap",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "user_preferences",
+            "name": "basemap"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "crosspost_inaturalist",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "user_preferences",
+            "name": "crosspost_inaturalist"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "crosspost_inaturalist_require_photos",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "user_preferences",
+            "name": "crosspost_inaturalist_require_photos"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_preferences",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "22bac704851ebb2bd15d7274aaef069561fee12ab346adb1bb59312f3ced7c19"
+}

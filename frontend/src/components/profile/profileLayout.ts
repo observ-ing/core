@@ -1,4 +1,5 @@
 import type { SxProps, Theme } from "@mui/material";
+import { miniIconSx } from "../common/layoutSx";
 
 /** Profile header container styles shared between ProfileView and ProfileHeaderSkeleton */
 export const PROFILE_HEADER_SX: SxProps<Theme> = {
@@ -19,7 +20,7 @@ export const PROFILE_STAT_BOX_SX: SxProps<Theme> = {
 
 /** Small secondary-colored icon styling used by ProfileStat */
 export const PROFILE_STAT_ICON_SX: SxProps<Theme> = {
-  fontSize: 14,
+  ...miniIconSx,
   color: "text.secondary",
 };
 

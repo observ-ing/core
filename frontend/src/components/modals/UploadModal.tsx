@@ -28,6 +28,8 @@ import {
   Step,
   StepButton,
   StepContent,
+  Checkbox,
+  FormControlLabel,
   useTheme,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -37,7 +39,14 @@ import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice
 import { trackSubmission } from "../../store/pendingSlice";
 import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
 import { useToast } from "../../hooks/useToast";
-import { useUserPreferences, useCrosspostStatus } from "../../lib/query/hooks";
+import {
+  useUserPreferences,
+  useCrosspostStatus,
+  useMaxPhotoSize,
+  useInatAccount,
+} from "../../lib/query/hooks";
+import { defaultCrosspost } from "../../lib/crosspost";
+import { hasInatRecord } from "../../lib/externalRecords";
 import { useSubmitObservation, useUpdateObservation } from "../../lib/query/mutations";
 import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
@@ -58,7 +67,12 @@ import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
 import { pickPhotos } from "../../lib/photoPicker";
-import { IMAGE_INPUT_ACCEPT, MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
+import {
+  IMAGE_INPUT_ACCEPT,
+  MAX_IMAGES,
+  formatMegabytes,
+  vetImageFiles,
+} from "../../lib/imageSelection";
 import { convertHeicFiles, isHeic } from "../../lib/heic";
 import { readPhotoExif } from "../../lib/exif";
 import { taxonFields, toEventDate } from "../../lib/observationInput";
@@ -147,7 +161,10 @@ export function UploadModal() {
   const toast = useToast();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
-  const defaultLicense = useUserPreferences().data?.defaultLicense ?? null;
+  const prefs = useUserPreferences().data;
+  const defaultLicense = prefs?.defaultLicense ?? null;
+  const inatLogin = useInatAccount().data?.login;
+  const maxPhotoSize = useMaxPhotoSize();
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
   const currentUser = useAppSelector((state) => state.auth.user);
 
@@ -165,6 +182,9 @@ export function UploadModal() {
   const [kingdom, setKingdom] = useState("");
   const [rank, setRank] = useState("");
   const [license, setLicense] = useState<string>(DEFAULT_LICENSE);
+  // The user's own choice to post to iNaturalist, or null to follow the
+  // default from their preferences.
+  const [crosspostChoice, setCrosspostChoice] = useState<boolean | null>(null);
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [images, setImages] = useState<ImagePreview[]>([]);
@@ -286,6 +306,7 @@ export function UploadModal() {
     setKingdom("");
     setRank("");
     setLicense(isEditMode ? DEFAULT_LICENSE : (defaultLicense ?? DEFAULT_LICENSE));
+    setCrosspostChoice(null);
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
     setExistingImages([]);
@@ -334,13 +355,20 @@ export function UploadModal() {
     }
 
     const currentCount = imageCountRef.current;
-    const { accepted, invalidType, tooLarge, exceededCap } = vetImageFiles(files, currentCount);
+    const { accepted, invalidType, tooLarge, exceededCap } = vetImageFiles(files, currentCount, {
+      maxFileSize: maxPhotoSize.bytes,
+    });
 
     for (const file of invalidType) {
       toast.error(`Invalid file type: ${file.name}. Use JPG, PNG, WebP, or HEIC.`);
     }
     for (const file of tooLarge) {
-      toast.error(`File too large: ${file.name}. Max size is 10MB.`);
+      const max = formatMegabytes(maxPhotoSize.bytes);
+      toast.error(
+        maxPhotoSize.limitedByPds
+          ? `File too large: ${file.name}. Your PDS accepts photos up to ${max}.`
+          : `File too large: ${file.name}. Max size is ${max}.`,
+      );
     }
     if (exceededCap) {
       toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
@@ -521,7 +549,10 @@ export function UploadModal() {
         { onSuccess, onError },
       );
     } else {
-      submitObs.mutate(commonPayload, { onSuccess, onError });
+      submitObs.mutate(
+        { ...commonPayload, ...(offerCrosspost ? { crosspostToInaturalist: crosspost } : {}) },
+        { onSuccess, onError },
+      );
     }
   };
 
@@ -534,6 +565,15 @@ export function UploadModal() {
   // Short summary shown under each step's title once it's been filled in, so the
   // collapsed steps still convey what was entered.
   const photoCount = existingImages.length + images.length;
+
+  // Only for a new observation: an existing one is posted from its details.
+  const offerCrosspost = !isEditMode && !!inatLogin;
+  // An observation that already links to one on iNaturalist isn't posted
+  // there again; the server would skip it anyway.
+  const alreadyOnInat = hasInatRecord(externalRecords);
+  // Follows the preferences, so adding a photo can tick it, until the user
+  // ticks or unticks it themselves.
+  const crosspost = !alreadyOnInat && (crosspostChoice ?? defaultCrosspost(prefs, { photoCount }));
   const stepSummaries: Record<number, string> = {
     [STEP_PHOTOS]:
       photoCount > 0 ? `${photoCount} photo${photoCount === 1 ? "" : "s"}` : "Optional",
@@ -638,7 +678,8 @@ export function UploadModal() {
                   variant="caption"
                   sx={{ color: "text.disabled", display: "block", mt: 0.5 }}
                 >
-                  JPG, PNG, WebP, or HEIC - Max 10MB each - Up to {MAX_IMAGES} photos
+                  JPG, PNG, WebP, or HEIC - Max {formatMegabytes(maxPhotoSize.bytes)} each
+                  {maxPhotoSize.limitedByPds && " (set by your PDS)"} - Up to {MAX_IMAGES} photos
                 </Typography>
 
                 <StepNav step={STEP_PHOTOS} />
@@ -662,11 +703,7 @@ export function UploadModal() {
                 Location
               </StepButton>
               <StepContent>
-                <Suspense
-                  fallback={
-                    <CenteredSpinner size={24} sx={{ height: 260, alignItems: "center" }} />
-                  }
-                >
+                <Suspense fallback={<CenteredSpinner sx={{ height: 260 }} />}>
                   <LocationPicker
                     latitude={lat ? parseFloat(lat) : null}
                     longitude={lng ? parseFloat(lng) : null}
@@ -734,10 +771,16 @@ export function UploadModal() {
                         }}
                         onSelectAncestor={(ancestor) => {
                           setSpecies(ancestor.name);
-                          setMatchedTaxon(null);
                           setIsDirty(true);
-                          if (ancestor.kingdom) setKingdom(ancestor.kingdom);
-                          setRank(ancestor.rank);
+                          if (ancestor.match) {
+                            setMatchedTaxon(ancestor.match);
+                            setKingdom(ancestor.match.kingdom ?? "");
+                            setRank("");
+                          } else {
+                            setMatchedTaxon(null);
+                            if (ancestor.kingdom) setKingdom(ancestor.kingdom);
+                            setRank(ancestor.rank);
+                          }
                         }}
                         disabled={isSubmitting}
                       />
@@ -891,6 +934,32 @@ export function UploadModal() {
                   }}
                   lockedUri={crosspostStatus.data?.inatUrl}
                 />
+
+                {offerCrosspost && (
+                  <Box sx={{ mt: 1 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={crosspost}
+                          disabled={alreadyOnInat}
+                          onChange={(_, checked) => {
+                            setCrosspostChoice(checked);
+                            setIsDirty(true);
+                          }}
+                        />
+                      }
+                      label="Also post to iNaturalist"
+                    />
+                    {alreadyOnInat && (
+                      <Typography
+                        variant="caption"
+                        sx={{ display: "block", color: "text.secondary" }}
+                      >
+                        Already on iNaturalist: it links to an observation there.
+                      </Typography>
+                    )}
+                  </Box>
+                )}
 
                 <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
                   <Button onClick={() => setActiveStep(STEP_IDENTIFY)} color="inherit" size="small">

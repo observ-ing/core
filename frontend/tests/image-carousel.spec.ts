@@ -19,7 +19,6 @@ function observationOverrides(extra: Partial<Occurrence> = {}): Partial<Occurren
 }
 
 test.describe("Image Carousel", () => {
-  // TC-IMG-001: Main image displayed
   test("main image displayed for observation with images", async ({ page }) => {
     // Mock image URLs to return a placeholder
     await page.route("**/media/blob/**", (route) => {
@@ -42,10 +41,9 @@ test.describe("Image Carousel", () => {
 
     await page.goto(DETAIL_URL);
     const mainImage = page.locator("img[alt='Quercus alba']");
-    await expect(mainImage).toBeVisible({ timeout: 10000 });
+    await expect(mainImage).toBeVisible({ timeout: 10_000 });
   });
 
-  // TC-IMG-002: Multiple thumbnails shown
   test("multiple thumbnails shown when observation has >1 image", async ({ page }) => {
     await page.route("**/media/blob/**", (route) => {
       return route.fulfill({
@@ -72,13 +70,12 @@ test.describe("Image Carousel", () => {
     await page.goto(DETAIL_URL);
     // Thumbnails are rendered as img elements with alt "Photo N"
     await expect(page.locator("img[alt='Photo 1']")).toBeVisible({
-      timeout: 10000,
+      timeout: 10_000,
     });
     await expect(page.locator("img[alt='Photo 2']")).toBeVisible();
     await expect(page.locator("img[alt='Photo 3']")).toBeVisible();
   });
 
-  // TC-IMG-003: Clicking thumbnail changes main image
   test("clicking thumbnail changes the main image", async ({ page }) => {
     await page.route("**/media/blob/**", (route) => {
       return route.fulfill({
@@ -103,7 +100,7 @@ test.describe("Image Carousel", () => {
 
     await page.goto(DETAIL_URL);
     await expect(page.locator("img[alt='Photo 1']")).toBeVisible({
-      timeout: 10000,
+      timeout: 10_000,
     });
 
     // Main image initially shows first image
@@ -118,7 +115,6 @@ test.describe("Image Carousel", () => {
     expect(newSrc).not.toBe(initialSrc);
   });
 
-  // TC-IMG-004: Single image - no thumbnails
   test("single-image observation shows no thumbnails", async ({ page }) => {
     await page.route("**/media/blob/**", (route) => {
       return route.fulfill({
@@ -140,13 +136,12 @@ test.describe("Image Carousel", () => {
 
     await page.goto(DETAIL_URL);
     const mainImage = page.locator("img[alt='Quercus alba']");
-    await expect(mainImage).toBeVisible({ timeout: 10000 });
+    await expect(mainImage).toBeVisible({ timeout: 10_000 });
 
     // No thumbnail images should be present (Photo N alts only appear for multi-image)
     await expect(page.locator("img[alt='Photo 1']")).not.toBeVisible();
   });
 
-  // TC-IMG-005: Alt text matches species name
   test("main image alt text matches species name", async ({ page }) => {
     await page.route("**/media/blob/**", (route) => {
       return route.fulfill({
@@ -173,6 +168,6 @@ test.describe("Image Carousel", () => {
     );
 
     await page.goto(DETAIL_URL);
-    await expect(page.locator("img[alt='Falco peregrinus']")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("img[alt='Falco peregrinus']")).toBeVisible({ timeout: 10_000 });
   });
 });

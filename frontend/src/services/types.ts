@@ -27,6 +27,7 @@ export type { CreateCommentRequest } from "../bindings/CreateCommentRequest";
 export type { CreateLikeRequest } from "../bindings/CreateLikeRequest";
 export type { DeleteLikeRequest } from "../bindings/DeleteLikeRequest";
 export type { UserPreferencesResponse } from "../bindings/UserPreferencesResponse";
+export type { UploadLimitResponse } from "../bindings/UploadLimitResponse";
 export type { UpdatePreferencesRequest } from "../bindings/UpdatePreferencesRequest";
 import type { Occurrence } from "../bindings/Occurrence";
 export type { Occurrence };
@@ -44,12 +45,12 @@ export type TaxonDetail = GeneratedTaxonDetail & {
   observationCount?: number;
 };
 
-// TaxaResult: extends with synonym resolution fields
-import type { TaxaResult as GeneratedTaxaResult } from "../bindings/TaxaResult";
-export type TaxaResult = GeneratedTaxaResult & {
-  isSynonym?: boolean;
-  acceptedName?: string;
-};
+import type { TaxaResult } from "../bindings/TaxaResult";
+export type { TaxaResult };
+
+export interface TaxaSearchResponse {
+  results: TaxaResult[];
+}
 
 // ============================================================================
 // Feed Types (frontend-only wrappers around API responses)

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { MAX_IMAGES, MAX_FILE_SIZE, vetImageFiles } from "./imageSelection";
+import { MAX_IMAGES, MAX_FILE_SIZE, formatMegabytes, vetImageFiles } from "./imageSelection";
 
 function imageFile(name: string, { type = "image/jpeg", size = 1024 } = {}): File {
   const file = new File([""], name, { type });
@@ -101,7 +101,7 @@ describe("vetImageFiles", () => {
 
 describe("vetImageFiles with a custom cap", () => {
   it("applies the given cap instead of MAX_IMAGES", () => {
-    const result = vetImageFiles(batchOf(MAX_IMAGES + 5), 0, 100);
+    const result = vetImageFiles(batchOf(MAX_IMAGES + 5), 0, { maxPhotos: 100 });
 
     expect(result.accepted).toHaveLength(MAX_IMAGES + 5);
     expect(result.exceededCap).toBe(false);
@@ -110,11 +110,33 @@ describe("vetImageFiles with a custom cap", () => {
   it("lists the valid files that did not fit, and keeps vetting the rest", () => {
     const files = [...batchOf(3), imageFile("notes.pdf", { type: "application/pdf" })];
 
-    const result = vetImageFiles(files, 0, 2);
+    const result = vetImageFiles(files, 0, { maxPhotos: 2 });
 
     expect(result.accepted.map((f) => f.name)).toEqual(["photo-0.jpg", "photo-1.jpg"]);
     expect(result.overCap.map((f) => f.name)).toEqual(["photo-2.jpg"]);
     expect(result.invalidType.map((f) => f.name)).toEqual(["notes.pdf"]);
     expect(result.exceededCap).toBe(true);
+  });
+});
+
+describe("vetImageFiles with the viewer's PDS limit", () => {
+  it("turns away a photo under the lexicon's cap but over the PDS's", () => {
+    const pdsLimit = 5_242_880;
+    const files = [
+      imageFile("small.jpg", { size: pdsLimit }),
+      imageFile("medium.jpg", { size: pdsLimit + 1 }),
+    ];
+
+    const result = vetImageFiles(files, 0, { maxFileSize: pdsLimit });
+
+    expect(result.accepted.map((f) => f.name)).toEqual(["small.jpg"]);
+    expect(result.tooLarge.map((f) => f.name)).toEqual(["medium.jpg"]);
+  });
+});
+
+describe("formatMegabytes", () => {
+  it("drops a trailing .0 and keeps one decimal otherwise", () => {
+    expect(formatMegabytes(MAX_FILE_SIZE)).toBe("10 MB");
+    expect(formatMegabytes(5_242_880)).toBe("5.2 MB");
   });
 });

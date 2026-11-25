@@ -4,10 +4,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::Json;
-use axum_extra::extract::CookieJar;
 use chrono::{DateTime, Utc};
 use inaturalist_oauth::PkceVerifier;
 use jacquard_common::types::collection::Collection;
@@ -35,6 +34,18 @@ const LINK_TTL_MS: i64 = 10 * 60 * 1000;
 struct PendingLink {
     did: String,
     pkce_verifier: PkceVerifier,
+    /// An app's callback, when an app started the link (`?redirect_uri=`): the
+    /// callback hands iNaturalist's answer to it, and the app finishes at
+    /// `POST /api/inat/link` with its own session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    app_redirect: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct AuthorizeParams {
+    /// An app's callback (one of `APP_REDIRECT_URIS`): iNaturalist's answer is
+    /// handed back to it instead of finishing here.
+    redirect_uri: Option<String>,
 }
 
 /// Prefixed so these can't collide with the AT Protocol OAuth states that
@@ -62,13 +73,22 @@ pub struct InatAuthorizeResponse {
 pub async fn authorize(
     State(state): State<AppState>,
     user: AuthUser,
+    Query(params): Query<AuthorizeParams>,
 ) -> Result<Json<InatAuthorizeResponse>, AppError> {
+    if let Some(uri) = &params.redirect_uri {
+        if !state.app_redirect_uris.contains(uri) {
+            return Err(AppError::BadRequest(
+                "This app isn't allowed to link an account here".into(),
+            ));
+        }
+    }
     let authorization = inat(&state)?
         .authorization_url()
         .map_err(|e| AppError::Internal(e.message))?;
     let pending = serde_json::to_string(&PendingLink {
         did: user.did,
         pkce_verifier: authorization.pkce_verifier,
+        app_redirect: params.redirect_uri,
     })
     .map_err(|e| AppError::Internal(e.to_string()))?;
     observing_db::oauth::set_state(
@@ -88,6 +108,7 @@ pub async fn authorize(
 pub struct CallbackParams {
     code: Option<String>,
     state: Option<String>,
+    error: Option<String>,
 }
 
 /// GET /api/inat/callback?code=...&state=...
@@ -96,10 +117,15 @@ pub struct CallbackParams {
 /// which reads the marker query parameter to say how it went.
 pub async fn callback(
     State(state): State<AppState>,
-    cookies: CookieJar,
+    headers: HeaderMap,
     Query(params): Query<CallbackParams>,
 ) -> Response {
-    match link_account(&state, &cookies, params).await {
+    // A link an app started goes back to the app, which finishes it with its
+    // own session; this browser's (if any) plays no part.
+    if let Some(app) = app_link(&state, params.state.as_deref()).await {
+        return Redirect::to(&app_callback_url(&app, &params)).into_response();
+    }
+    match link_account(&state, &headers, params).await {
         Ok(login) => {
             info!(login = %login, "Linked iNaturalist account");
             Redirect::to("/settings?inat-linked=1").into_response()
@@ -111,29 +137,112 @@ pub async fn callback(
     }
 }
 
+/// The app callback of the pending link `oauth_state` names, if an app
+/// started it and its callback is still allowed. The link stays pending for
+/// the app to finish.
+async fn app_link(state: &AppState, oauth_state: Option<&str>) -> Option<String> {
+    let pending = observing_db::oauth::get_state(&state.pool, &state_key(oauth_state?))
+        .await
+        .ok()??;
+    let pending: PendingLink = serde_json::from_str(&pending).ok()?;
+    pending
+        .app_redirect
+        .filter(|uri| state.app_redirect_uris.contains(uri))
+}
+
+/// The app's callback with iNaturalist's answer: `code` and `state`, or
+/// `error` (`access_denied` when the person declined) and `state`.
+fn app_callback_url(app: &str, params: &CallbackParams) -> String {
+    let Ok(mut url) = url::Url::parse(app) else {
+        return "/".to_string();
+    };
+    {
+        let mut q = url.query_pairs_mut();
+        match (&params.code, &params.error) {
+            (Some(code), None) => q.append_pair("code", code),
+            (_, error) => q.append_pair(
+                "error",
+                if error.as_deref() == Some("access_denied") {
+                    "access_denied"
+                } else {
+                    "server_error"
+                },
+            ),
+        };
+        if let Some(s) = &params.state {
+            q.append_pair("state", s);
+        }
+    }
+    url.to_string()
+}
+
+#[derive(Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct LinkInatRequest {
+    /// The `code` iNaturalist handed to the app's callback.
+    pub code: String,
+    /// The `state` that came with it.
+    pub state: String,
+}
+
+/// POST /api/inat/link
+///
+/// Finish a link an app started (`GET /api/inat/authorize?redirect_uri=`):
+/// the app sends iNaturalist's code with its own session, which must be the
+/// one that started the link.
+pub async fn link_from_app(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(LinkInatRequest {
+        code,
+        state: oauth_state,
+    }): Json<LinkInatRequest>,
+) -> Result<Json<InatAccountResponse>, AppError> {
+    let login = finish_link(&state, &user.did, code, &oauth_state).await?;
+    info!(login = %login, "Linked iNaturalist account from an app");
+    Ok(Json(InatAccountResponse {
+        enabled: true,
+        login: Some(login),
+        linked_at: Some(Utc::now()),
+    }))
+}
+
 async fn link_account(
     state: &AppState,
-    cookies: &CookieJar,
+    headers: &HeaderMap,
     params: CallbackParams,
 ) -> Result<String, AppError> {
-    let inat = inat(state)?;
+    inat(state)?;
     // A denied authorization comes back with `error` and no `code`.
     let (Some(code), Some(oauth_state)) = (params.code, params.state) else {
         return Err(AppError::BadRequest("Authorization was not granted".into()));
     };
-    let user = auth::require_auth(&state.pool, cookies)
+    let user = auth::require_auth(&state.pool, headers)
         .await
         .map_err(|_| AppError::Unauthorized)?;
+    finish_link(state, &user.did, code, &oauth_state).await
+}
+
+/// Trade `code` for tokens and link the account, if `oauth_state` names a
+/// pending link that `did` started.
+async fn finish_link(
+    state: &AppState,
+    did: &str,
+    code: String,
+    oauth_state: &str,
+) -> Result<String, AppError> {
+    let inat = inat(state)?;
 
     // The state is single-use, and must have been issued to this session.
-    let key = state_key(&oauth_state);
+    let key = state_key(oauth_state);
     let pending = observing_db::oauth::get_state(&state.pool, &key)
         .await?
         .ok_or_else(|| AppError::BadRequest("Unknown or expired authorization".into()))?;
     observing_db::oauth::delete_state(&state.pool, &key).await?;
     let pending: PendingLink =
         serde_json::from_str(&pending).map_err(|e| AppError::Internal(e.to_string()))?;
-    if pending.did != user.did {
+    if pending.did != did {
         return Err(AppError::Forbidden(
             "Authorization was started by another session".into(),
         ));
@@ -150,14 +259,14 @@ async fn link_account(
         .map_err(|e| AppError::Internal(e.message))?;
     observing_db::crossposts::upsert_account(
         &state.pool,
-        &user.did,
+        did,
         SERVICE,
         &account.id.to_string(),
         &account.login,
         &tokens.access_token,
     )
     .await?;
-    inat.remember_api_token(&user.did, &tokens.api_token).await;
+    inat.remember_api_token(did, &tokens.api_token).await;
 
     Ok(account.login)
 }
@@ -331,7 +440,7 @@ pub async fn create_crosspost(
 
     // `enqueue` is the real arbiter: it refuses if another request got in
     // between the check and here.
-    if !observing_db::crossposts::enqueue(&state.pool, &uri, SERVICE, &user.did).await? {
+    if !observing_db::crossposts::enqueue(&state.pool, &uri, SERVICE, &user.did, &[], None).await? {
         return Err(Refusal::AlreadyQueued.into());
     }
     info!(uri = %uri, "Queued occurrence for cross-posting to iNaturalist");
@@ -346,4 +455,50 @@ pub async fn create_crosspost(
 
     let row = observing_db::crossposts::get(&state.pool, &uri, SERVICE).await?;
     Ok((StatusCode::ACCEPTED, Json(row.into())))
+}
+
+#[cfg(test)]
+mod app_link_tests {
+    use super::*;
+
+    fn params(code: Option<&str>, error: Option<&str>) -> CallbackParams {
+        CallbackParams {
+            code: code.map(String::from),
+            state: Some("s1".into()),
+            error: error.map(String::from),
+        }
+    }
+
+    #[test]
+    fn the_app_gets_the_code_and_state() {
+        assert_eq!(
+            app_callback_url("ing.observ.exact:/oauth", &params(Some("c1"), None)),
+            "ing.observ.exact:/oauth?code=c1&state=s1"
+        );
+    }
+
+    #[test]
+    fn a_denial_is_passed_on_and_anything_else_is_a_server_error() {
+        assert_eq!(
+            app_callback_url(
+                "http://127.0.0.1:8765/.exact/auth/callback",
+                &params(None, Some("access_denied"))
+            ),
+            "http://127.0.0.1:8765/.exact/auth/callback?error=access_denied&state=s1"
+        );
+        assert_eq!(
+            app_callback_url(
+                "ing.observ.exact:/oauth",
+                &params(None, Some("invalid_scope"))
+            ),
+            "ing.observ.exact:/oauth?error=server_error&state=s1"
+        );
+    }
+
+    #[test]
+    fn a_pending_link_from_before_this_change_reads_as_a_web_link() {
+        let old = r#"{"did":"did:plc:a","pkce_verifier":"v"}"#;
+        let pending: PendingLink = serde_json::from_str(old).unwrap();
+        assert_eq!(pending.app_redirect, None);
+    }
 }

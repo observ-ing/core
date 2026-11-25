@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE crossposts SET awaits_uris = '{}'\n        WHERE occurrence_uri = $1 AND service = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "30819460b1b697ac8461fdb64df5454224a98de2f343b0d20e7bd5a2aeeee365"
+}

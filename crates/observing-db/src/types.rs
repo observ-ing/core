@@ -14,6 +14,12 @@ pub struct BlobEntry {
     /// SPDX license identifier mirrored from the media record (e.g. `CC-BY-4.0`).
     #[serde(default)]
     pub license: Option<String>,
+    /// AT URI of the `bio.lexicons.temp.v0-1.media` record this entry was
+    /// resolved from, which is how an edit matches a photo to the occurrence's
+    /// media strong ref. Absent on rows indexed before it was recorded, and
+    /// on legacy inline `blobs`, which have no media record.
+    #[serde(default, rename = "mediaUri", skip_serializing_if = "Option::is_none")]
+    pub media_uri: Option<String>,
 }
 
 /// Image metadata within a blob entry.
@@ -263,6 +269,8 @@ pub struct UserPreferencesRow {
     pub did: String,
     pub default_license: Option<String>,
     pub basemap: Option<String>,
+    pub crosspost_inaturalist: Option<bool>,
+    pub crosspost_inaturalist_require_photos: Option<bool>,
     pub updated_at: DateTime<Utc>,
 }
 
@@ -291,6 +299,10 @@ pub struct CrosspostRow {
     pub status: String,
     pub attempts: i32,
     pub last_error: Option<String>,
+    /// Records the ingester must index before this crosspost may run.
+    pub awaits_uris: Vec<String>,
+    /// Times it has found the ingester not done yet.
+    pub waits: i32,
 }
 
 /// A link cross-posting produced: an `externalRecords` entry that is ours.
@@ -460,6 +472,8 @@ pub struct ExploreFeedOptions {
     pub kingdom: Option<String>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
+    /// Only occurrences recorded by this DID.
+    pub observer: Option<String>,
     /// Data-quality criteria every returned row must meet. Empty applies no
     /// filter; see [`crate::quality::QualitySelection`].
     pub quality: QualitySelection,

@@ -125,6 +125,8 @@ short version:
 - **Frontend**: `npm audit`, `oxfmt --check`, `oxlint`, `tsc`,
   `npm run build`, Android APK build, Storybook coverage + build +
   story render test (`npm run test:storybook`), TS bindings drift check
+  (run `npm run bindings` after changing a ts-rs type; it also refreshes
+  the Exact app's copy in `exact/bindings`)
 - **Rust**: `cargo check --locked`, `cargo fmt --check`,
   `cargo-deny`, `cargo clippy -D warnings`, `cargo sqlx prepare --check`,
   generated-lexicons drift check, `cargo test --workspace`

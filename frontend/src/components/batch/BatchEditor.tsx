@@ -1,8 +1,17 @@
-// Side panel of the batch uploader: edits identification, date, location, and
-// remarks on every selected observation at once. A field shows a value only
-// when the whole selection agrees on it.
+// Side panel of the batch uploader: edits identification, date, location,
+// remarks, and posting to iNaturalist on every selected observation at once.
+// A field shows a value only when the whole selection agrees on it.
 import { lazy, Suspense, useState } from "react";
-import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { TaxonMatchChip } from "../common/TaxonMatchChip";
@@ -10,13 +19,14 @@ import { KingdomSelect } from "../common/KingdomSelect";
 import { RankSelect } from "../common/RankSelect";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { TimeZoneSelect } from "../common/TimeZoneSelect";
-import { coverImageSx, thumbnailFrameSx } from "../common/layoutSx";
+import { coverImageSx, panelTitleSx, thumbnailFrameSx, touchTarget } from "../common/layoutSx";
 import { VisualId } from "../identification/VisualId";
 import type { AncestorSelection } from "../identification/VisualIdCards";
 import type { SpeciesSuggestion } from "../../services/api";
 import type { BatchEdit, BatchObservation, BatchTaxon } from "../../lib/batchUpload";
 import { MAX_REMARK_LENGTH } from "../../lib/remarks";
 import { formatCoordinate, plural } from "../../lib/utils";
+import { monoStack } from "../../theme";
 
 const LocationPicker = lazy(() =>
   import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
@@ -31,6 +41,11 @@ export interface BatchEditorProps {
   touchDrag?: boolean;
   /** Offers the map full screen, where it is easier to pan by touch than in the panel. */
   onExpandMap?: () => void;
+  /**
+   * Set when the user has an iNaturalist account linked: whether an observation
+   * they haven't decided about gets posted there.
+   */
+  crosspostDefault?: boolean | undefined;
 }
 
 /** The identification a visual ID suggestion stands for. */
@@ -42,7 +57,14 @@ export function taxonFromSuggestion(s: SpeciesSuggestion): Partial<BatchTaxon> {
 
 /** The identification for a higher rank offered in place of an uncertain species. */
 export function taxonFromAncestor(ancestor: AncestorSelection): Partial<BatchTaxon> {
-  return { name: ancestor.name, match: null, kingdom: ancestor.kingdom ?? "", rank: ancestor.rank };
+  return ancestor.match
+    ? {
+        name: ancestor.name,
+        match: ancestor.match,
+        kingdom: ancestor.match.kingdom ?? "",
+        rank: "",
+      }
+    : { name: ancestor.name, match: null, kingdom: ancestor.kingdom ?? "", rank: ancestor.rank };
 }
 
 const MIXED = "Mixed values";
@@ -144,7 +166,33 @@ export function RemarksField({ selected, onEdit }: BatchEditorProps) {
   );
 }
 
-function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps) {
+/** "Also post to iNaturalist", offered only with an account linked. */
+export function CrosspostField({ selected, onEdit, crosspostDefault }: BatchEditorProps) {
+  if (crosspostDefault === undefined) return null;
+  const checked = shared(selected.map((o) => o.crosspost ?? crosspostDefault));
+
+  return (
+    <FormControlLabel
+      control={
+        <Checkbox
+          checked={checked === true}
+          // A mixed selection is ticked for all on the first click.
+          indeterminate={checked === undefined}
+          onChange={(_, crosspost) => onEdit({ crosspost })}
+        />
+      }
+      label="Also post to iNaturalist"
+    />
+  );
+}
+
+function EditorFields({
+  selected,
+  onEdit,
+  touch,
+  onExpandMap,
+  crosspostDefault,
+}: BatchEditorProps) {
   const [first] = selected;
   // The point clicked on the map for a multi-selection, not yet applied.
   const [proposed, setProposed] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -176,7 +224,7 @@ function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps
   return (
     <Stack spacing={2}>
       <Box>
-        <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
+        <Typography variant="h6" component="h2" sx={panelTitleSx}>
           Editing {plural(selected.length, "observation")}
         </Typography>
         {!single && (
@@ -261,9 +309,7 @@ function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps
       <DateFields selected={selected} onEdit={onEdit} />
 
       <Box>
-        <Suspense
-          fallback={<CenteredSpinner size={24} sx={{ height: 260, alignItems: "center" }} />}
-        >
+        <Suspense fallback={<CenteredSpinner sx={{ height: 260 }} />}>
           {single ? (
             <LocationPicker
               latitude={first.latitude}
@@ -295,7 +341,7 @@ function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps
             color="inherit"
             startIcon={<OpenInFullIcon />}
             onClick={onExpandMap}
-            sx={{ mt: 1, minHeight: 44 }}
+            sx={{ mt: 1, minHeight: touchTarget }}
           >
             Expand map
           </Button>
@@ -316,7 +362,7 @@ function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps
             <Stack spacing={1}>
               <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
                 <Typography sx={{ fontWeight: 600 }}>New location</Typography>
-                <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                <Typography variant="body2" sx={{ fontFamily: monoStack }}>
                   {formatCoordinate(proposed.latitude)}, {formatCoordinate(proposed.longitude)}
                 </Typography>
               </Stack>
@@ -338,6 +384,8 @@ function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps
       </Box>
 
       <RemarksField selected={selected} onEdit={onEdit} />
+
+      <CrosspostField selected={selected} onEdit={onEdit} crosspostDefault={crosspostDefault} />
     </Stack>
   );
 }
@@ -348,6 +396,7 @@ export function BatchEditor({
   touch = false,
   touchDrag = true,
   onExpandMap,
+  crosspostDefault,
 }: BatchEditorProps) {
   return (
     <Paper
@@ -358,7 +407,7 @@ export function BatchEditor({
     >
       {selected.length === 0 ? (
         <Stack spacing={1.25}>
-          <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
+          <Typography variant="h6" component="h2" sx={panelTitleSx}>
             Nothing selected
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -386,6 +435,7 @@ export function BatchEditor({
           onEdit={onEdit}
           touch={touch}
           {...(onExpandMap ? { onExpandMap } : {})}
+          crosspostDefault={crosspostDefault}
         />
       )}
     </Paper>

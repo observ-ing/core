@@ -81,7 +81,7 @@ pub struct CreateIdentificationRequest {
     path = "/api/identifications",
     tag = "identifications",
     request_body = CreateIdentificationRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
         (status = 400, description = "A field failed validation", body = ErrorResponse),
@@ -130,7 +130,7 @@ pub async fn create_identification(
     path = "/api/identifications/{uri}",
     tag = "identifications",
     params(("uri" = String, Path, description = "AT URI of the identification (`at://...`), percent-encoded")),
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was deleted", body = SuccessResponse),
         (status = 400, description = "Invalid AT URI", body = ErrorResponse),

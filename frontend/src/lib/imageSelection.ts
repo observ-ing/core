@@ -8,8 +8,17 @@ import { HEIC_ACCEPT } from "./heic";
 /** Most photos one observation can carry. */
 export const MAX_IMAGES = 10;
 
-/** Largest accepted size for a single photo. Mirrors the uploader's own check. */
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+/**
+ * Largest accepted size for a single photo, in bytes. Mirrors the `maxSize` on
+ * the media lexicon's image blob (and the appview's `MAX_IMAGE_BYTES`), so it's
+ * 10 MB in decimal, not 10 MiB.
+ */
+export const MAX_FILE_SIZE = 10_000_000;
+
+/** `bytes` as decimal megabytes for display, e.g. "10 MB" or "5.2 MB". */
+export function formatMegabytes(bytes: number): string {
+  return `${parseFloat((bytes / 1_000_000).toFixed(1))} MB`;
+}
 
 export const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
@@ -30,19 +39,25 @@ export interface VettedImages {
   exceededCap: boolean;
 }
 
+export interface VetLimits {
+  maxPhotos?: number;
+  maxFileSize?: number;
+}
+
 /**
  * Split a picked batch into the files that can be added and the ones that
  * can't, given how many photos the observation already holds.
  *
  * Callers pass the whole batch at once: the cap is tracked across the batch,
  * so selecting 15 files into an empty observation yields 10 accepted rather
- * than all 15. `max` defaults to the per-observation limit; the batch uploader
- * passes its own.
+ * than all 15. `maxPhotos` defaults to the per-observation limit; the batch
+ * uploader passes its own. `maxFileSize` defaults to the lexicon's cap; pass
+ * the viewer's own when their PDS advertises a lower one.
  */
 export function vetImageFiles(
   files: File[],
   currentCount: number,
-  max: number = MAX_IMAGES,
+  { maxPhotos = MAX_IMAGES, maxFileSize = MAX_FILE_SIZE }: VetLimits = {},
 ): VettedImages {
   const result: VettedImages = {
     accepted: [],
@@ -51,14 +66,14 @@ export function vetImageFiles(
     overCap: [],
     exceededCap: false,
   };
-  let remaining = Math.max(0, max - currentCount);
+  let remaining = Math.max(0, maxPhotos - currentCount);
 
   for (const file of files) {
     if (!VALID_IMAGE_TYPES.includes(file.type)) {
       result.invalidType.push(file);
       continue;
     }
-    if (file.size > MAX_FILE_SIZE) {
+    if (file.size > maxFileSize) {
       result.tooLarge.push(file);
       continue;
     }

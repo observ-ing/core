@@ -67,8 +67,12 @@ tracing-subscriber = { workspace = true }
 # Time
 chrono = { workspace = true }
 
-# Base64 for blob uploads
+# Base64 for blob uploads and session tokens
 base64 = { workspace = true }
+
+# Session tokens: OS CSPRNG for the token, SHA-256 for the stored hash
+getrandom = "0.3"
+sha2 = "0.10"
 
 # AT Protocol OAuth + Agent
 atrium-api = "0.25"
@@ -98,6 +102,9 @@ futures = { workspace = true }
 # In-memory cache for taxonomy lookups
 moka = { workspace = true }
 
+# Thumbnails for /media/thumb (decode, EXIF orientation, resize, JPEG)
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+
 # Scratch directory for HEIC conversion
 tempfile = { workspace = true }
 
@@ -107,6 +114,8 @@ tempfile = { workspace = true }
 wiremock = "0.6"
 # Paused time, for testing the iNaturalist rate limiter
 tokio = { workspace = true, features = ["test-util"] }
+# Driving routers in tests (`ServiceExt::oneshot`)
+tower = { workspace = true, features = ["util"] }
 
 [[bin]]
 name = "observing-appview"

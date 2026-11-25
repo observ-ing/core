@@ -70,6 +70,12 @@ pub struct TaxonResult {
     pub source: String,
     #[ts(optional)]
     pub conservation_status: Option<ConservationStatus>,
+    /// In search results, the name of a synonym of this taxon that matched
+    /// the query better than the taxon's own names did, so the result can
+    /// say why it's there (e.g. "Eriobotrya japonica" for *Rhaphiolepis
+    /// bibas*).
+    #[ts(optional)]
+    pub matched_synonym: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]

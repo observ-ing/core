@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { test, expect } from "./fixtures/mock-auth";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
 test.describe("Landing Page", () => {
@@ -30,7 +29,7 @@ test.describe("Landing Page", () => {
     await expect(page).toHaveURL("/explore");
     // Should show feed content
     const cards = page.locator(".MuiCard-root");
-    await expect(cards.first()).toBeVisible({ timeout: 10000 });
+    await expect(cards.first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("Log in button opens login modal", async ({ page }) => {
@@ -46,17 +45,16 @@ test.describe("Landing Page", () => {
   });
 });
 
-authTest.describe("Landing Page - Authenticated", () => {
-  authTest(
-    "authenticated user sees feed at /, not landing page",
-    async ({ authenticatedPage: page }) => {
-      await mockOwnObservationFeed(page);
-      await page.goto("/");
-      // Should see the sidebar and feed, not the landing page
-      await authExpect(page.getByRole("link", { name: "Home" }).first()).toBeVisible({
-        timeout: 10000,
-      });
-      await authExpect(page.getByText("Observe nature.")).not.toBeVisible();
-    },
-  );
+test.describe("Landing Page - Authenticated", () => {
+  test("authenticated user sees feed at /, not landing page", async ({
+    authenticatedPage: page,
+  }) => {
+    await mockOwnObservationFeed(page);
+    await page.goto("/");
+    // Should see the sidebar and feed, not the landing page
+    await expect(page.getByRole("link", { name: "Home" }).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText("Observe nature.")).not.toBeVisible();
+  });
 });

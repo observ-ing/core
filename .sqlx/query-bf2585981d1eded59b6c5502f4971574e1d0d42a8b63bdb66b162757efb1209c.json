@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO crossposts (occurrence_uri, service, did, status, awaits_uris, not_before)\n        VALUES ($1, $2, $3, 'pending', $4, $5)\n        ON CONFLICT (occurrence_uri, service) DO UPDATE SET\n            status = 'pending',\n            attempts = 0,\n            last_error = NULL,\n            awaits_uris = EXCLUDED.awaits_uris,\n            waits = 0,\n            not_before = EXCLUDED.not_before,\n            updated_at = NOW()\n        WHERE crossposts.status = 'failed'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "TextArray",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bf2585981d1eded59b6c5502f4971574e1d0d42a8b63bdb66b162757efb1209c"
+}

@@ -44,6 +44,42 @@ pub async fn create(
     Ok(())
 }
 
+/// Notify an occurrence's owner of the likes, identifications, and comments by
+/// other users that already reference it.
+///
+/// The ingester notifies when one of those records lands, but only if the
+/// occurrence is already there to name its owner. Tap orders records within a
+/// repo, not across repos, so a record on someone else's occurrence can arrive
+/// first; calling this when the occurrence lands catches those up. Like
+/// `create`, it skips self-notifications and is deduplicated, so it's safe to
+/// run on every occurrence upsert, including edits and re-creations.
+pub async fn create_for_existing_references(
+    executor: impl sqlx::PgExecutor<'_>,
+    owner_did: &str,
+    occurrence_uri: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+        INSERT INTO ingester.notifications (recipient_did, actor_did, kind, subject_uri, reference_uri)
+        SELECT $1, refs.did, refs.kind, $2, refs.uri
+        FROM (
+            SELECT did, 'like' AS kind, uri FROM likes WHERE subject_uri = $2
+            UNION ALL
+            SELECT did, 'identification', uri FROM identifications WHERE subject_uri = $2
+            UNION ALL
+            SELECT did, 'comment', uri FROM comments WHERE subject_uri = $2
+        ) refs
+        WHERE refs.did <> $1
+        ON CONFLICT DO NOTHING
+        "#,
+        owner_did,
+        occurrence_uri,
+    )
+    .execute(executor)
+    .await?;
+    Ok(())
+}
+
 /// List notifications for a recipient, paginated by cursor (id), newest first.
 ///
 /// Read-state lives in `appview.notification_reads` — the appview writes there

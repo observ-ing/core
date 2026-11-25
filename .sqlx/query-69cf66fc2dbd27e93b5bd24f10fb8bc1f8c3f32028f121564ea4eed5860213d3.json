@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE crossposts\n        SET attempts = GREATEST(attempts - 1, 0),\n            waits = waits + 1,\n            not_before = NOW() + make_interval(secs => $3),\n            updated_at = NOW()\n        WHERE occurrence_uri = $1 AND service = $2 AND status = 'pending'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "69cf66fc2dbd27e93b5bd24f10fb8bc1f8c3f32028f121564ea4eed5860213d3"
+}

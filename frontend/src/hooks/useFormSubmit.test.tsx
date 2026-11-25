@@ -1,20 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import type { ReactNode } from "react";
-import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useFormSubmit } from "./useFormSubmit";
-import uiReducer from "../store/uiSlice";
-import authReducer from "../store/authSlice";
-import feedReducer from "../store/feedSlice";
+import { makeStore, type AppStore } from "../store";
 
-function makeStore() {
-  return configureStore({
-    reducer: { auth: authReducer, feed: feedReducer, ui: uiReducer },
-  });
-}
-
-function wrapper(store: ReturnType<typeof makeStore>) {
+function wrapper(store: AppStore) {
   return ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
 }
 

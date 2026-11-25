@@ -12,6 +12,9 @@ export const detailHeaderSx = {
 /** Inline glyph size for icons embedded in chips, small buttons and caption rows. */
 export const miniIconSx = { fontSize: 14 } as const;
 
+/** Large glyph for full-panel prompts (location permission, empty photo picker). */
+export const heroIconSx = { fontSize: 48 } as const;
+
 /** Glyph size for icons in caption/status rows (batch card status lines). */
 export const captionIconSx = { fontSize: 16 } as const;
 
@@ -20,6 +23,18 @@ export const rowIconSx = { fontSize: 18 } as const;
 
 /** Font size for fine print smaller than `caption` (photo license credits, rank labels). */
 export const finePrintFontSize = "0.65rem";
+
+/** Secondary-line font size on the phone batch screens (row labels, subtitles, tab captions). */
+export const phoneCaptionFontSize = 13;
+
+/** Title text in the phone batch top bars (step header, selection-mode bar). */
+export const phoneBarTitleSx = { fontWeight: 700, fontSize: 17 } as const;
+
+/** Bold weight for top-level page titles (`h5` headings that name the page: Settings, Notifications, batch uploader steps). */
+export const pageTitleSx = { fontWeight: 700 } as const;
+
+/** Bold weight for `h6` headings that title a panel or card (batch editor panel, empty drop zone, landing feature cards). */
+export const panelTitleSx = { fontWeight: 700 } as const;
 
 /** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
 export const pillButtonSx = { borderRadius: 2 } as const;
@@ -39,6 +54,12 @@ export const coverImageSx = {
   objectFit: "cover",
   display: "block",
 } as const;
+
+/** Corner radius (theme spacing units, 10px) for phone batch cards, tiles and tree rows. */
+export const cardRadius = 1.25;
+
+/** Corner radius (theme spacing units, 12px) for phone panels, outlined paper and option rows. */
+export const panelRadius = 1.5;
 
 /** Rounded, clipped frame for photo thumbnails (upload previews, photo strips, batch cards). */
 export const thumbnailFrameSx = { borderRadius: 1, overflow: "hidden" } as const;
@@ -162,3 +183,12 @@ export const headerMenuPaperSx = {
   minWidth: 200,
   "& .MuiMenuItem-root": { px: 2, py: 1, borderRadius: 1, mx: 1, my: 0.5 },
 } as const;
+
+/** Minimum height for secondary touch controls on the batch screens (44px, Apple's HIG minimum). */
+export const touchTarget = 44;
+
+/** Minimum height for primary touch controls on the batch screens (48px, Material's touch target). */
+export const touchTargetLarge = 48;
+
+/** Minimum height for tall tappable rows and phone app bars (64px: two lines of text plus padding). */
+export const tallRowMinHeight = 64;
