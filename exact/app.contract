@@ -421,7 +421,8 @@ fn capitalized(s: string): string = s == "" ? "" : `${s.slice(0, 1).toUpperCase(
 fn chosenLabel(taxa: string[], path: string): string = match first(taxa.filter(t => t.startsWith(`${path}|`))) { case some(t) => (match t.split("|").at(4) { case some(l) => l, case none => "" }), case none => "" }
 fn problem(code: string, what: string): string = code == "offline" ? "Can’t reach observ.ing. Check your connection and try again." : `Couldn’t load ${what}. Try again.`
 
-// A panel on a content screen (the welcome, the filters).
+// A panel on a content screen. Exact has no card of its own; its guide makes one of
+// the secondary background, as this does.
 style Card
   padding=16 border-radius=12
   background-color="-exact-secondary-background"
