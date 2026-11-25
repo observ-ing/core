@@ -79,7 +79,7 @@ import { ConvertingStatus } from "./ConvertingStatus";
 import { StatusLine } from "./StatusLine";
 import { PhoneBatch } from "./phone/PhoneBatch";
 import { PhoneLocationStep } from "./phone/PhoneLocationStep";
-import { pageTitleSx, panelTitleSx, touchTarget } from "../common/layoutSx";
+import { dropZoneFrameSx, pageTitleSx, panelTitleSx, touchTarget } from "../common/layoutSx";
 
 /** Observations sent at once. Each request carries its photos, so keep it low. */
 const UPLOAD_CONCURRENCY = 3;
@@ -666,19 +666,13 @@ export function BatchUploadPage() {
     />
   );
   const dropZoneSx = {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
+    ...dropZoneFrameSx,
     justifyContent: "center",
     gap: 1,
     p: 2.5,
-    borderRadius: 2,
-    border: 2,
-    borderStyle: "dashed",
     borderColor: overNew ? "primary.main" : "divider",
     bgcolor: overNew ? "action.hover" : "transparent",
     color: "text.secondary",
-    textAlign: "center",
   } as const;
 
   const dialogs = (
