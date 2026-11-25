@@ -86,7 +86,15 @@ findings below).
 ## Findings
 
 From dry runs against the live network on 2026-10-24, run locally (not on
-Cloud Run).
+Cloud Run), against hydrant at `310c486`.
+
+On 2026-11-25 the branch was brought up to date with main (Rust 1.100) and
+hydrant was bumped to `f04c49e`, upstream main as of 2026-11-24. That's 57
+commits, most of them crawler, backfill and `/stream` changes, plus dropping
+most of its jacquard dependencies (57 new packages in our lockfile, down from
+87). A 100-second dry run on the new rev backfilled 2,900 records across the
+same 18 repos with no errors, kept `lag_seconds` at 0, and shut down cleanly.
+The throughput numbers below weren't re-measured.
 
 - **Records match the PDSes exactly.** hydrant held 2,558 records across 18
   repos. Every repo and collection matched a `listRecords` walk of its PDS.

@@ -11,7 +11,7 @@ publish = false
 # its jemalloc global allocator (the binary's choice, not a library's).
 # `user-keyspace` lets us keep our stream cursor in hydrant's own database;
 # `firehose-diagnostics` exposes the relay seq the heartbeat reports.
-hydrant = { git = "https://tangled.org/ptr.pet/hydrant", rev = "310c4864b1382ef1a6eb3b852ad94b2261a82469", default-features = false, features = ["indexer", "indexer_stream", "user-keyspace", "firehose-diagnostics"] }
+hydrant = { git = "https://tangled.org/ptr.pet/hydrant", rev = "f04c49e0ce35e6f375c1c1e2c79d6e9ee63b32c2", default-features = false, features = ["indexer", "indexer_stream", "user-keyspace", "firehose-diagnostics"] }
 # hydrant's API reports errors as miette diagnostics.
 miette = "7"
 
