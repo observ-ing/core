@@ -9,6 +9,9 @@ pub enum BlobResolverError {
     /// A `com.atproto.repo.getRecord` request failed or returned an
     /// unexpected body.
     RecordFetch(String),
+    /// A fetched blob was rejected: too large, or its bytes don't hash to
+    /// the CID it was requested by.
+    InvalidBlob(String),
 }
 
 impl fmt::Display for BlobResolverError {
@@ -17,6 +20,7 @@ impl fmt::Display for BlobResolverError {
             BlobResolverError::Http(err) => write!(f, "HTTP error: {}", err),
             BlobResolverError::DidResolution(msg) => write!(f, "DID resolution error: {}", msg),
             BlobResolverError::RecordFetch(msg) => write!(f, "record fetch error: {}", msg),
+            BlobResolverError::InvalidBlob(msg) => write!(f, "invalid blob: {}", msg),
         }
     }
 }
