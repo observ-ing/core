@@ -76,6 +76,7 @@ import { useMarqueeSelection } from "./useMarqueeSelection";
 import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
 import { ConvertingStatus } from "./ConvertingStatus";
+import { StatusLine } from "./StatusLine";
 import { PhoneBatch } from "./phone/PhoneBatch";
 import { PhoneLocationStep } from "./phone/PhoneLocationStep";
 import { pageTitleSx, panelTitleSx, touchTarget } from "../common/layoutSx";
@@ -813,18 +814,13 @@ export function BatchUploadPage() {
               </Typography>
               <ConvertingStatus count={converting} />
               {failedCount > 0 && (
-                <Typography
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.75,
-                    color: "error.main",
-                    fontWeight: 600,
-                  }}
+                <StatusLine
+                  variant="body1"
+                  icon={<ErrorIcon fontSize="small" />}
+                  color="error.main"
                 >
-                  <ErrorIcon fontSize="small" />
                   {failedCount} failed
-                </Typography>
+                </StatusLine>
               )}
               {incomplete.length > 0 && !filtering && (
                 <Button
