@@ -19,10 +19,6 @@
 //!                            enriched with its `repo_info` (state, rev,
 //!                            error, retries, record count).
 
-use crate::{
-    server::SharedState,
-    types::{IngesterStats, RecentEvent},
-};
 use axum::{
     extract::State,
     response::{Html, Json},
@@ -33,6 +29,10 @@ use observing_db::{failed_records, repos};
 use serde::Serialize;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
+use tap_ingester::{
+    server::SharedState,
+    types::{IngesterStats, RecentEvent},
+};
 use tapped::TapClient;
 use tokio::sync::OnceCell;
 use tower_http::cors::CorsLayer;

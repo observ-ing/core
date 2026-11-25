@@ -15,6 +15,20 @@ pub enum IngesterError {
     Processing(String),
 }
 
+impl IngesterError {
+    /// A foreign-key violation: the record points at a row (in practice, an
+    /// occurrence) that hasn't been ingested yet, so it may succeed once the
+    /// subject arrives.
+    pub fn is_missing_subject(&self) -> bool {
+        match self {
+            IngesterError::Database(err) => {
+                matches!(err.as_ref(), sqlx::Error::Database(db) if db.is_foreign_key_violation())
+            }
+            _ => false,
+        }
+    }
+}
+
 impl fmt::Display for IngesterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
