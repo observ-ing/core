@@ -4,7 +4,7 @@ import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import type { TaxonTreeItem } from "./TaxonExplorer";
 import { TaxonSearchBox } from "./TaxonSearchBox";
-import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { taxonNameFontStyle } from "../common/TaxonLink";
 import { GradientSwatch } from "../common/GradientSwatch";
 import { cardRadius, coverImageSx, finePrintFontSize } from "../common/layoutSx";
 
@@ -63,9 +63,7 @@ function renderTreeItems(
                 noWrap
                 title={String(item.label)}
                 sx={{
-                  fontStyle: shouldItalicizeTaxonName(String(item.label), item.rank)
-                    ? "italic"
-                    : "normal",
+                  fontStyle: taxonNameFontStyle(String(item.label), item.rank),
                   fontWeight: item.id === selectedId ? 700 : 400,
                 }}
               >

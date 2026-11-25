@@ -3,7 +3,7 @@ import type { TaxonDetail } from "../../services/types";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { ExternalLinkChip } from "../common/ExternalLinkChip";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
-import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { taxonNameFontStyle } from "../common/TaxonLink";
 import { TAXON_HERO_IMAGE_RADIUS, TAXON_HERO_IMAGE_SIZE } from "./taxonLayout";
 
 export interface TaxonHeroCardProps {
@@ -51,9 +51,7 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
         <Typography
           variant="h5"
           sx={{
-            fontStyle: shouldItalicizeTaxonName(taxon.scientificName, taxon.rank)
-              ? "italic"
-              : "normal",
+            fontStyle: taxonNameFontStyle(taxon.scientificName, taxon.rank),
             color: "primary.main",
             fontWeight: 600,
             fontSize: "1.875rem",

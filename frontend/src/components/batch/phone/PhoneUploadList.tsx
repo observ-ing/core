@@ -22,7 +22,7 @@ import {
   panelRadius,
   pageTitleSx,
 } from "../../common/layoutSx";
-import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
+import { taxonNameFontStyle } from "../../common/TaxonLink";
 import { isReading, missingFields, type BatchObservation } from "../../../lib/batchUpload";
 import { plural } from "../../../lib/utils";
 import { formatBatchDate } from "../BatchCard";
@@ -59,10 +59,7 @@ function Name({ observation }: { observation: BatchObservation }) {
       noWrap
       sx={{
         fontWeight: 600,
-        fontStyle:
-          name && shouldItalicizeTaxonName(name, match?.rank ?? (rank || undefined))
-            ? "italic"
-            : "normal",
+        fontStyle: taxonNameFontStyle(name, match?.rank ?? (rank || undefined)),
       }}
     >
       {name || "Unidentified"}
