@@ -57,7 +57,7 @@ impl MediaResolver {
             .fetch_record_by_aturi(&r.uri)
             .await
             .ok()?;
-        media_record_to_blob_entry(&record)
+        media_record_to_blob_entry(&record, &r.uri)
     }
 }
 
@@ -68,9 +68,9 @@ impl Default for MediaResolver {
 }
 
 /// Pull the blob ref, mime type, alt text, and license out of a `bio.lexicons.temp.v0-1.media`
-/// record JSON to build a `BlobEntry`. Returns `None` if the record is missing
-/// the required blob fields.
-fn media_record_to_blob_entry(record: &Value) -> Option<BlobEntry> {
+/// record JSON to build a `BlobEntry`, tagged with the record's `uri`. Returns
+/// `None` if the record is missing the required blob fields.
+fn media_record_to_blob_entry(record: &Value, uri: &str) -> Option<BlobEntry> {
     let image = record.get("image")?;
     let cid = image
         .get("ref")
@@ -93,6 +93,7 @@ fn media_record_to_blob_entry(record: &Value) -> Option<BlobEntry> {
         },
         alt,
         license,
+        media_uri: Some(uri.to_string()),
     })
 }
 
@@ -100,6 +101,8 @@ fn media_record_to_blob_entry(record: &Value) -> Option<BlobEntry> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    const MEDIA_URI: &str = "at://did:plc:author/bio.lexicons.temp.v0-1.media/abc123";
 
     #[test]
     fn extracts_blob_entry_from_canonical_media_record() {
@@ -115,7 +118,7 @@ mod tests {
             "license": "https://creativecommons.org/licenses/by/4.0/",
         });
 
-        let entry = media_record_to_blob_entry(&record).expect("should parse");
+        let entry = media_record_to_blob_entry(&record, MEDIA_URI).expect("should parse");
         match &entry.image.ref_ {
             BlobRef::Link { link } => assert_eq!(link, "bafyreiabc123"),
             _ => panic!("expected Link variant"),
@@ -143,7 +146,7 @@ mod tests {
             },
             "license": "CC-BY-4.0",
         });
-        let entry = media_record_to_blob_entry(&record).expect("should parse");
+        let entry = media_record_to_blob_entry(&record, MEDIA_URI).expect("should parse");
         assert_eq!(entry.license.as_deref(), Some("CC-BY-4.0"));
     }
 
@@ -155,7 +158,7 @@ mod tests {
                 "mimeType": "image/png",
             }
         });
-        let entry = media_record_to_blob_entry(&record).expect("should parse");
+        let entry = media_record_to_blob_entry(&record, MEDIA_URI).expect("should parse");
         assert!(entry.alt.is_none());
         assert!(entry.license.is_none());
     }
@@ -163,7 +166,7 @@ mod tests {
     #[test]
     fn returns_none_without_image() {
         let record = json!({ "alt": "no image here" });
-        assert!(media_record_to_blob_entry(&record).is_none());
+        assert!(media_record_to_blob_entry(&record, MEDIA_URI).is_none());
     }
 
     #[test]
@@ -171,7 +174,7 @@ mod tests {
         let record = json!({
             "image": { "mimeType": "image/png" }
         });
-        assert!(media_record_to_blob_entry(&record).is_none());
+        assert!(media_record_to_blob_entry(&record, MEDIA_URI).is_none());
     }
 
     #[test]
@@ -179,6 +182,20 @@ mod tests {
         let record = json!({
             "image": { "ref": { "$link": "bafyreiabc" } }
         });
-        assert!(media_record_to_blob_entry(&record).is_none());
+        assert!(media_record_to_blob_entry(&record, MEDIA_URI).is_none());
+    }
+
+    /// An edit matches a photo to the occurrence's media strong ref by this
+    /// URI, so the entry has to carry the ref it was resolved from.
+    #[test]
+    fn records_the_media_record_uri() {
+        let record = json!({
+            "image": {
+                "ref": { "$link": "bafyreiabc" },
+                "mimeType": "image/jpeg",
+            }
+        });
+        let entry = media_record_to_blob_entry(&record, MEDIA_URI).expect("should parse");
+        assert_eq!(entry.media_uri.as_deref(), Some(MEDIA_URI));
     }
 }
