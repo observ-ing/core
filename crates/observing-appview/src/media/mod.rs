@@ -13,6 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
 
+pub mod public_net;
 pub mod thumb;
 
 /// Default cache TTL: 24 hours, matching the previous media-proxy default.
@@ -34,6 +35,9 @@ const MAX_CONCURRENT_THUMBNAILS: usize = 4;
 pub struct MediaCache {
     pub cache: BlobCache,
     pub fetcher: BlobResolver,
+    /// Whether `fetcher` only reaches public addresses (see [`public_net`]).
+    /// Off in local dev, where the PDS and PLC directory are on localhost.
+    pub public_only: bool,
     /// DID → PDS URL. Without it every blob cache miss re-resolved the DID
     /// document (a plc.directory round trip), even for a page of images that
     /// all belong to the same account.
@@ -48,8 +52,9 @@ impl MediaCache {
     ///
     /// Reads `CACHE_DIR` (default `./cache/media`), `MAX_CACHE_SIZE`
     /// (default 1 GB), and `CACHE_TTL_SECS` (default 24h) — same names the
-    /// previous media-proxy binary used.
-    pub async fn from_env() -> Arc<Self> {
+    /// previous media-proxy binary used. `public_only` picks the
+    /// [`public_net`] client for PDS fetches; pass it in production.
+    pub async fn from_env(public_only: bool) -> Arc<Self> {
         let cache_dir = std::env::var("CACHE_DIR")
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("./cache/media"));
@@ -66,6 +71,7 @@ impl MediaCache {
             cache_dir = %cache_dir.display(),
             max_cache_size_mb = max_cache_size / (1024 * 1024),
             cache_ttl_secs,
+            public_only,
             "Initializing in-process media cache"
         );
 
@@ -74,14 +80,25 @@ impl MediaCache {
             tracing::error!(error = %e, "Failed to initialize media cache directory");
         }
 
-        Arc::new(Self::new(cache))
+        Arc::new(Self::build(cache, public_only))
     }
 
-    /// A media cache around an already-initialized blob cache.
+    /// A media cache around an already-initialized blob cache, fetching
+    /// from any address.
     pub fn new(cache: BlobCache) -> Self {
+        Self::build(cache, false)
+    }
+
+    pub(crate) fn build(cache: BlobCache, public_only: bool) -> Self {
+        let fetcher = if public_only {
+            BlobResolver::with_client(public_net::public_only_client())
+        } else {
+            BlobResolver::new()
+        };
         Self {
             cache,
-            fetcher: BlobResolver::new(),
+            fetcher,
+            public_only,
             pds_urls: Cache::builder()
                 .max_capacity(PDS_URL_CAPACITY)
                 .time_to_live(PDS_URL_TTL)

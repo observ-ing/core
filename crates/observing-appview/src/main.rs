@@ -87,7 +87,7 @@ async fn main() {
         .as_deref()
         .map(|project_id| Arc::new(service_status::ServiceStatusClient::new(project_id)));
 
-    let media = media::MediaCache::from_env().await;
+    let media = media::MediaCache::from_env(config.public_url.is_some()).await;
 
     let inat = config.inat.clone().map(|inat_config| {
         Arc::new(inat::Inat::new(
