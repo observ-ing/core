@@ -214,6 +214,40 @@ test "a family's tree opens a genus to show its species, and closes it"
   clock data
   expect tree missing "child-9"
 
+test "the Docs page lists the reference pages and opens the lexicons"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "account-docs"
+  clock settle
+  expect tree has "docs-api"
+  expect tree has "docs-source"
+  tap "docs-lexicons"
+  clock settle
+  expect tree has "lexicon-bio.lexicons.temp.v0-1.occurrence"
+  expect tree has "lexprop-bio.lexicons.temp.v0-1.occurrence-main-eventDate"
+  expect tree has "lexicon-com.atproto.repo.strongRef"
+
+// Only its shape: transparency.yml rewrites the figures every month.
+test "the Transparency page tabulates the hosting costs"
+  at "/transparency"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  clock settle
+  expect tree has "cost-month-0"
+  expect tree has "cost-total-0"
+  expect tree has "cost-grand-total"
+
+test "the Status page says which services are awake"
+  at "/status"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  clock settle
+  expect text "service-observing-appview-state" == "Awake"
+  expect text "service-observing-species-id-state" == "Asleep"
+  expect text "service-tap-ingester-summary" == "1 instance, 1 busy"
+  expect tree missing "service-observing-db-summary"
+
 // Sign-in starts on /account: Exact's web host finds the drive's auth fixture
 // (?authFixture=, added to the launch URL) in the page's current URL, which a
 // tab switch replaces.

@@ -6158,5 +6158,64 @@
    "conservationStatus": null,
    "matchedSynonym": null
   }
- ]
+ ],
+ "/api/status": {
+  "services": [
+   {
+    "id": "observing-appview",
+    "name": "Website & API",
+    "description": "Serves this site and the API behind it.",
+    "state": "awake",
+    "instances": 1,
+    "activeInstances": 0
+   },
+   {
+    "id": "tap-ingester",
+    "name": "Ingester",
+    "description": "Reads new observations, identifications and comments from the AT Protocol network into the index.",
+    "state": "up",
+    "instances": 1,
+    "activeInstances": 1
+   },
+   {
+    "id": "observing-species-id",
+    "name": "Species ID",
+    "description": "Suggests species for photos you upload.",
+    "state": "asleep",
+    "instances": 0,
+    "activeInstances": 0
+   },
+   {
+    "id": "observing-species-id-live",
+    "name": "Live camera ID",
+    "description": "Suggests species from the live camera view, using a smaller, faster model.",
+    "state": "asleep",
+    "instances": 0,
+    "activeInstances": 0
+   },
+   {
+    "id": "observing-worker",
+    "name": "Background tasks",
+    "description": "Matches new identifications to the GBIF taxonomy, a minute after they arrive, and posts observations to iNaturalist when their owners ask.",
+    "state": "asleep",
+    "instances": 0,
+    "activeInstances": 0
+   },
+   {
+    "id": "storybook",
+    "name": "Storybook",
+    "description": "The interactive component library.",
+    "state": "asleep",
+    "instances": 0,
+    "activeInstances": 0
+   },
+   {
+    "id": "observing-db",
+    "name": "Database",
+    "description": "Stores the index of observations, identifications and profiles.",
+    "state": "up"
+   }
+  ],
+  "checkedAt": "2026-11-24T02:28:23.423960854Z"
+ }
 }

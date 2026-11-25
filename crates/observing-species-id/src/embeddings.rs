@@ -131,6 +131,11 @@ impl SpeciesEmbeddings {
         self.labels.len()
     }
 
+    /// Metadata for each species, in embedding-row order
+    pub fn labels(&self) -> &[SpeciesLabel] {
+        &self.labels
+    }
+
     /// Embedding dimension (inferred from the loaded model data)
     pub fn embed_dim(&self) -> usize {
         self.embed_dim

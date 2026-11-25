@@ -23,6 +23,7 @@ import type { InatAccountResponse } from "../bindings/InatAccountResponse";
 import type { InatAuthorizeResponse } from "../bindings/InatAuthorizeResponse";
 import type { CrosspostStatusResponse } from "../bindings/CrosspostStatusResponse";
 import type { CreateCrosspostRequest } from "../bindings/CreateCrosspostRequest";
+import type { RankFallback } from "../bindings/RankFallback";
 
 export const API_BASE = import.meta.env["VITE_API_URL"] || "";
 const DEFAULT_PAGE_SIZE = "20";
@@ -565,8 +566,22 @@ export interface SpeciesSuggestion {
   taxonMatch?: TaxaResult;
 }
 
+/**
+ * The rank the server falls back to when no single species is confident,
+ * e.g. the genus *Bombus* when the model can't tell bumble bees apart.
+ * `confidence` is the share of the model's probability on species in this
+ * taxon, so it isn't on the same scale as a suggestion's `confidence`.
+ */
+export interface IdentifyFallback extends RankFallback {
+  commonName?: string;
+  /** Set when the name resolved to a known GBIF taxon, as for suggestions. */
+  taxonMatch?: TaxaResult;
+}
+
 export interface IdentifyResponse {
   suggestions: SpeciesSuggestion[];
+  /** Absent when a species is confident enough, or no broader rank is. */
+  fallback?: IdentifyFallback;
   modelVersion: string;
   inferenceTimeMs: number;
 }

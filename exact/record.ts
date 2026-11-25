@@ -40,6 +40,7 @@ await record(`/api/taxa/search?q=eriobotrya%20japonica`); // matches a synonym
 await record(`/api/taxa/Animalia/Gaviidae`); // a family, whose tree opens a genus
 await record(`/api/taxa/Animalia/Gaviidae/occurrences?limit=${PAGE}`);
 await record(`/api/taxa/Animalia/Gavia/children`);
+await record(`/api/status`); // the Status page
 
 await Bun.write(`${import.meta.dir}/fixtures/api.json`, `${JSON.stringify(recorded, null, 1)}\n`);
 console.log(`fixtures/api.json ← ${appview}: ${Object.keys(recorded).length} responses`);
