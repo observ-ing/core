@@ -1,5 +1,9 @@
 forma observing
 
 // observ.ing's green (frontend/src/theme: primary.main), as the app's tint.
+// brand.accent is the same green for app.contract's root `accent-color`: Android's
+// painter reads a node's accent-color, else the device's Material You colour, and
+// never the theme's AccentColor.
 theme
   AccentColor = light-dark(#3a7d44, #5e9d5a)
+  brand.accent = light-dark(#3a7d44, #5e9d5a)

@@ -1131,7 +1131,7 @@ component App
 
   view
     main navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app"
-      width="100%" height="100%" display="flex" flex-direction="column"
+      width="100%" height="100%" display="flex" flex-direction="column" accent-color="brand.accent"
       if offline
         row role="status" gap=8 align-items="center" flex-wrap="wrap" padding="8px 16px" background-color="-exact-secondary-background" testId="offline-banner"
           image "symbol:alert" color="-exact-system-orange"
