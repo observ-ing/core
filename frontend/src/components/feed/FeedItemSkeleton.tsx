@@ -1,7 +1,13 @@
 import { Box, Card, CardContent, Skeleton } from "@mui/material";
 import { IconButtonSkeleton } from "../common/IconButtonSkeleton";
 import { UserCardSkeleton } from "../common/UserCardSkeleton";
-import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
+import {
+  FEED_AVATAR_SIZE,
+  FEED_CARD_SX,
+  FEED_FOOTER_ROW_SX,
+  FEED_HEADER_SX,
+  FEED_IMAGE_MAX_HEIGHT,
+} from "./feedLayout";
 
 /**
  * Skeleton loader matching FeedItem layout
@@ -10,9 +16,9 @@ export function FeedItemSkeleton() {
   return (
     <Card sx={FEED_CARD_SX}>
       {/* Header: avatar, name + handle, timestamp, overflow menu */}
-      <Box sx={{ display: "flex", gap: 1, p: 2, alignItems: "flex-start" }}>
+      <Box sx={FEED_HEADER_SX}>
         <UserCardSkeleton
-          avatarSize={40}
+          avatarSize={FEED_AVATAR_SIZE}
           spacing={1}
           nameWidth="30%"
           nameHeight={24}
@@ -28,14 +34,7 @@ export function FeedItemSkeleton() {
       <Skeleton variant="rectangular" height={FEED_IMAGE_MAX_HEIGHT} />
       {/* Species name and like button share a row */}
       <CardContent>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 1,
-          }}
-        >
+        <Box sx={FEED_FOOTER_ROW_SX}>
           <Skeleton variant="text" width="40%" height={24} />
           <IconButtonSkeleton />
         </Box>
