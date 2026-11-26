@@ -58,16 +58,17 @@ against the same appview.
   cross-post preferences; "Also post to iNaturalist" on New Observation and
   Batch Upload (your preference until changed); on your own observations, its
   cross-post status, View on iNaturalist, and Post (or Try Again).
-- **Polish**: observ.ing's green as the accent (`app.forma`); a welcome card
-  at the top of Explore on a signed-out first visit (Sign In or Just Browse,
-  remembered); an offline banner with Try Again; a profile's Identifications
-  beside its Observations; a not-found screen for an observation, profile or
-  taxon the appview doesn't have; a moment's message when a write succeeds
-  (a comment, an identification, a deletion, an edit). Its routes are observ.ing's own
-  (`/observation/:did/:rkey`, `/profile/:did`, `/taxon/:kingdom/:name`), so
-  observ.ing links open the same screens; on iOS, `applinks:observ.ing` is
-  declared, which needs observ.ing to serve an apple-app-site-association
-  naming the app.
+- **Polish**: observ.ing's green as the accent (`app.forma`, and the root's
+  `accent-color`, since Android otherwise paints in the device's Material You
+  colour); a welcome card at the top of Explore on a signed-out first visit
+  (Sign In or Just Browse, remembered); an offline banner with Try Again; a
+  profile's Identifications beside its Observations; a not-found screen for an
+  observation, profile or taxon the appview doesn't have; a moment's message
+  when a write succeeds (a comment, an identification, a deletion, an edit).
+  Its routes are observ.ing's own (`/observation/:did/:rkey`, `/profile/:did`,
+  `/taxon/:kingdom/:name`), so observ.ing links open the same screens; on iOS,
+  `applinks:observ.ing` is declared, which needs observ.ing to serve an
+  apple-app-site-association naming the app.
 - **Sign in** (Account tab) with an atproto handle, and the signed-in **Home**
   feed. The system browser runs the appview's OAuth flow (`GET
   /oauth/app/login`), which redirects back to the app with a one-time code;
