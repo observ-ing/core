@@ -14,7 +14,13 @@ import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { PendingBadge, pendingCardSx } from "../common/PendingBadge";
-import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
+import {
+  FEED_AVATAR_SIZE,
+  FEED_CARD_SX,
+  FEED_FOOTER_ROW_SX,
+  FEED_HEADER_SX,
+  FEED_IMAGE_MAX_HEIGHT,
+} from "./feedLayout";
 
 interface FeedItemProps {
   observation: Occurrence;
@@ -63,10 +69,10 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
         component="div"
         sx={pendingCardSx(isPending)}
       >
-        <Box sx={{ display: "flex", gap: 1, p: 2, alignItems: "flex-start" }}>
+        <Box sx={FEED_HEADER_SX}>
           <UserCard
             actor={owner}
-            avatarSize={40}
+            avatarSize={FEED_AVATAR_SIZE}
             spacing={1}
             link
             stopPropagation
@@ -107,15 +113,13 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
           so the like button stays a standalone control and doesn't fold into
           the card's accessible name or trigger card navigation. */}
       <CardContent>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 1,
-          }}
-        >
-          <Box sx={{ fontSize: (theme) => theme.typography.h3.fontSize, minWidth: 0 }}>
+        <Box sx={FEED_FOOTER_ROW_SX}>
+          <Box
+            sx={{
+              fontSize: (theme) => theme.typography.h3.fontSize,
+              minWidth: 0,
+            }}
+          >
             {species ? (
               <TaxonLink
                 name={species}
@@ -135,7 +139,11 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
             disabled={isPending}
             loggedOut={!currentUser}
             onToggle={() =>
-              like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
+              like.mutate({
+                uri: observation.uri,
+                cid: observation.cid,
+                liked: !liked,
+              })
             }
           />
         </Box>
