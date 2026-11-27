@@ -36,10 +36,15 @@ import { CommentSection } from "../comment/CommentSection";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import {
+  OBSERVATION_CONTENT_SX,
+  OBSERVATION_HEADER_DIVIDER_SX,
+  OBSERVATION_OBSERVER_ROW_SX,
   OBSERVATION_PHOTO_LICENSE_SX,
   OBSERVATION_PHOTO_MAX_HEIGHT,
   OBSERVATION_PHOTO_RADIUS,
   OBSERVATION_PHOTO_STAGE_SX,
+  OBSERVATION_SECTION_SPACING,
+  OBSERVATION_SPECIES_HEADER_SX,
 } from "./observationLayout";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
@@ -187,7 +192,7 @@ export function ObservationDetail() {
         {/* Identity header: species, then observer + date with the like
             control — so what / who / when read as a single block. A divider
             keeps the taxa title visually distinct from the attribution row. */}
-        <Box sx={{ px: 3, pt: 2, pb: 1.5 }}>
+        <Box sx={OBSERVATION_SPECIES_HEADER_SX}>
           {species ? (
             <TaxonLink
               name={species}
@@ -215,9 +220,9 @@ export function ObservationDetail() {
           )}
         </Box>
 
-        <Divider sx={{ mx: 3 }} />
+        <Divider sx={OBSERVATION_HEADER_DIVIDER_SX} />
 
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center", px: 3, pt: 1.5, pb: 1.5 }}>
+        <Stack direction="row" spacing={1} sx={OBSERVATION_OBSERVER_ROW_SX}>
           <UserCard
             actor={observation.observer}
             avatarSize={44}
@@ -309,8 +314,8 @@ export function ObservationDetail() {
         )}
 
         {/* Content: a uniform vertical stack of peer sections. */}
-        <Box sx={{ p: { xs: 2, sm: 3 } }}>
-          <Stack spacing={2.5}>
+        <Box sx={OBSERVATION_CONTENT_SX}>
+          <Stack spacing={OBSERVATION_SECTION_SPACING}>
             {/* Details */}
             <Section>
               <SectionHeader

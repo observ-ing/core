@@ -19,3 +19,18 @@ export const OBSERVATION_PHOTO_LICENSE_SX = {
   px: 1,
   pt: { xs: 1, sm: 0.5 },
 } as const;
+
+/** Species / vernacular-name block at the top of the identity header */
+export const OBSERVATION_SPECIES_HEADER_SX = { px: 3, pt: 2, pb: 1.5 } as const;
+
+/** Inset divider between the species block and the observer row */
+export const OBSERVATION_HEADER_DIVIDER_SX = { mx: 3 } as const;
+
+/** Observer (avatar, name, date) row with the like control */
+export const OBSERVATION_OBSERVER_ROW_SX = { alignItems: "center", px: 3, py: 1.5 } as const;
+
+/** Padding around the stack of section cards below the photo */
+export const OBSERVATION_CONTENT_SX = { p: { xs: 2, sm: 3 } } as const;
+
+/** Vertical spacing between the section cards */
+export const OBSERVATION_SECTION_SPACING = 2.5;
