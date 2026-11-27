@@ -312,6 +312,13 @@ async fn main() {
         })
         .layer(DefaultBodyLimit::max(150 * 1024 * 1024)) // 150MB for base64-encoded images
         .layer(CompressionLayer::new())
+        .layer(axum_middleware::from_fn({
+            let policy = Arc::new(middleware::OriginPolicy::new(
+                &config.cors_origins,
+                config.public_url.as_deref(),
+            ));
+            move |req, next| middleware::check_origin(policy.clone(), req, next)
+        }))
         .layer(cors)
         .layer(axum_middleware::map_response({
             let is_production = config.public_url.is_some();
