@@ -9,6 +9,7 @@ import type { TaxonDetailWithCount } from './bindings/TaxonDetailWithCount.ts';
 import type { CreateOccurrenceRequest } from './bindings/CreateOccurrenceRequest.ts';
 import type { UpdateOccurrenceRequest } from './bindings/UpdateOccurrenceRequest.ts';
 import type { SpeciesSuggestion } from './bindings/SpeciesSuggestion.ts';
+import type { RankFallback } from './bindings/RankFallback.ts';
 import { readExif } from './exif.ts';
 import { discard, enqueue, readQueue, retry, sendWaiting } from './queue.ts';
 import { WEB } from './web-origin.ts';
@@ -227,10 +228,16 @@ function describe(path: string, store: Store, storage: Storage): Promise<PhotoFa
 }
 
 type EnrichedSuggestion = SpeciesSuggestion & { taxonMatch?: TaxaResult | null };
+// The broader taxon the appview sends when no species is confident, e.g. the
+// genus Bombus when the model can't tell bumble bees apart.
+type EnrichedFallback = RankFallback & { commonName?: string | null; taxonMatch?: TaxaResult | null };
 type Suggestion = Result<'suggestSpecies'>[number];
 
 // The appview's model on a photo, near `place` when given. `live` asks for the
-// faster model the camera loop uses. No model (or a busy one): none.
+// faster model the camera loop uses, which shows species only. No model (or a
+// busy one): none. When no species is confident but a broader rank is, that
+// rank comes first, marked `fallback`: its confidence is a probability ("72%
+// likely"), not the species' similarity score.
 async function suggest(
   path: string, place: { latitude: number; longitude: number } | null, store: Store, storage: Storage, limit: number, live = false,
 ): Promise<Suggestion[]> {
@@ -242,15 +249,30 @@ async function suggest(
     exactTimeout: 60000,
   });
   if (!response.ok) return [];
-  const body = (await response.json()) as { suggestions: EnrichedSuggestion[] };
-  return body.suggestions.map((s) => ({
+  const body = (await response.json()) as { suggestions: EnrichedSuggestion[]; fallback?: EnrichedFallback | null };
+  const species = body.suggestions.map((s) => ({
     scientificName: s.taxonMatch?.scientificName ?? s.scientificName,
     commonName: s.taxonMatch?.commonName ?? s.commonName ?? '',
     rank: s.taxonMatch?.rank ?? 'species',
     kingdom: s.taxonMatch?.kingdom ?? s.kingdom ?? '',
     confidence: Math.round(s.confidence * 100),
     inRange: s.inRange ?? true,
+    fallback: false,
+    above: '',
   }));
+  const f = live ? null : body.fallback;
+  if (!f) return species;
+  return [{
+    scientificName: f.taxonMatch?.scientificName ?? f.scientificName,
+    commonName: f.commonName ?? f.taxonMatch?.commonName ?? '',
+    rank: f.taxonMatch?.rank ?? f.rank,
+    // Only the ranks above `rank` are set, so a kingdom is its own kingdom.
+    kingdom: f.taxonMatch?.kingdom ?? f.kingdom ?? (f.rank === 'kingdom' ? f.scientificName : ''),
+    confidence: Math.round(f.confidence * 100),
+    inRange: true,
+    fallback: true,
+    above: '',
+  }, ...species.map((s, n) => (n === 0 ? { ...s, above: 'If you can tell which species:' } : s))];
 }
 
 const NOTICE: Record<string, string> = {
@@ -1020,13 +1042,15 @@ const sources: Sources = {
   },
 
   // --- Batch upload: one observation per photo -------------------------------
-  // The model's best guess for each photo, for a one-tap species.
+  // The model's best guess for each photo, for a one-tap species: its broader
+  // rank when no species is confident.
   batchSuggestions: ([paths], store, storage) => Promise.all(paths.map(async (path) => {
-    const none = { path, scientificName: '', rank: '', kingdom: '', label: '', confidence: 0 };
+    const none = { path, scientificName: '', rank: '', kingdom: '', label: '', confidence: 0, fallback: false };
     try {
       const [top] = await suggest(path, null, store, storage, 1);
       return top ? { path, scientificName: top.scientificName, rank: top.rank, kingdom: top.kingdom,
-        label: top.commonName ? `${top.commonName} · ${top.scientificName}` : top.scientificName, confidence: top.confidence } : none;
+        label: top.commonName ? `${top.commonName} · ${top.scientificName}` : top.scientificName, confidence: top.confidence,
+        fallback: top.fallback } : none;
     } catch {
       return none;
     }

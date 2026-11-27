@@ -240,6 +240,10 @@ shape Suggestion
   kingdom: string
   confidence: number
   inRange: bool
+  // A broader rank offered when no species is confident; confidence is then a probability.
+  fallback: bool
+  // A line to show above this row: under a fallback, the species' own heading.
+  above: string
 
 shape Created
   ok: bool
@@ -294,6 +298,7 @@ shape BatchGuess
   kingdom: string
   label: string
   confidence: number
+  fallback: bool
 
 shape Enqueued
   ok: bool
@@ -1432,7 +1437,7 @@ component App
                               if chosenLabel(batchTaxa, f.path) == ""
                                 for g in batchGuesses.filter(x => x.path == f.path and x.scientificName != "") key=g.path
                                   button press=useGuess(f.path, g.scientificName, g.rank, g.kingdom, g.label) testId=`batch-use-${n}`
-                                    text `Use ${g.label} (${g.confidence}%)`
+                                    text (g.fallback ? `Use ${g.label} (${g.rank}, ${g.confidence}% likely)` : `Use ${g.label} (${g.confidence}%)`)
                               else
                                 button press=clearGuess(f.path) testId=`batch-clear-${n}`
                                   text "Change to Unidentified"
@@ -1539,10 +1544,12 @@ component App
                                 option capitalized(r) value=r
                       else
                         for sg, n in newSuggestions key=sg.scientificName
+                          if sg.above != ""
+                            text sg.above font="-exact-footnote" color="-exact-secondary-label" testId="suggestion-species-label"
                           row press=pickTaxon(sg.scientificName, sg.rank, sg.kingdom, (sg.commonName != "" ? `${sg.commonName} · ${sg.scientificName}` : sg.scientificName))
                             role="button" tabindex=0 flex-wrap="wrap" gap=8 testId=`suggestion-${n}`
-                            text (sg.commonName != "" ? `${sg.commonName} · ${sg.scientificName}` : sg.scientificName) color="-exact-link" flex=1 min-width=0
-                            text (sg.inRange ? `${sg.confidence}%` : `${sg.confidence}% · out of range`) color="-exact-secondary-label"
+                            text (sg.commonName != "" ? `${sg.commonName} · ${sg.scientificName}` : sg.scientificName) color="-exact-link" flex=1 min-width=0 testId=`suggestion-name-${n}`
+                            text (sg.fallback ? `${capitalized(sg.rank)} · ${sg.confidence}% likely` : sg.inRange ? `${sg.confidence}%` : `${sg.confidence}% · out of range`) color="-exact-secondary-label" testId=`suggestion-score-${n}`
                         row
                           input type="search" value=newTaxonQuery input=searchNewTaxon placeholder="Search for a species" aria-label="Search for a species"
                             flex=1 min-width=0 testId="new-taxon-search"

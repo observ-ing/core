@@ -739,6 +739,29 @@ test "the sheet shows a picked photo's preview, date, place and suggestions"
   clock data
   expect tree has "suggestion-1"
 
+test "when no species is confident, the sheet leads with the broader rank the model is sure of"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "new-observation"
+  clock settle
+  tap "new-add-photos"
+  pick "new-photos" "fixtures/oak-portrait.jpg"
+  clock data
+  expect text "suggestion-name-0" == "Oaks · Quercus"
+  expect text "suggestion-score-0" == "Genus · 72% likely"
+  expect text "suggestion-species-label" == "If you can tell which species:"
+  expect text "suggestion-name-1" == "Coast Live Oak · Quercus agrifolia"
+  expect text "suggestion-score-1" == "31%"
+  tap "suggestion-0"
+  expect text "new-taxon" == "Oaks · Quercus"
+
 // Phase 5: batch upload, the upload queue, Live ID.
 test "a batch uploads one observation per placed photo"
   at "/account"
@@ -769,6 +792,25 @@ test "a batch uploads one observation per placed photo"
   clock settle
   expect text "sent-note" == "1 observation uploaded."
   expect tree missing "pending"
+
+test "a batch photo no species is confident about offers the broader rank"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-batch"
+  clock settle
+  tap "batch-add"
+  pick "batch-photos" "fixtures/oak-portrait.jpg"
+  clock data
+  expect text "batch-use-0" == "Use Oaks · Quercus (genus, 72% likely)"
+  tap "batch-use-0"
+  expect text "batch-title-0" == "Oaks · Quercus"
 
 test "offline, a batch waits in the queue, survives a relaunch and uploads later"
   at "/account"
