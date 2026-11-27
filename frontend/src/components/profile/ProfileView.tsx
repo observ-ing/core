@@ -22,7 +22,12 @@ import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
 import { taxonNameFontStyle } from "../common/TaxonLink";
-import { ObservationGridCard, observationGridCardContentSx } from "../common/ObservationGridCard";
+import {
+  ObservationGridCard,
+  observationGridCardContentSx,
+  observationGridCardTimeSx,
+  observationGridCardTitleSx,
+} from "../common/ObservationGridCard";
 import { ObservationGridCardSkeleton } from "../common/ObservationGridCardSkeleton";
 import { EmptyState } from "../common/EmptyState";
 import { LoadMoreButton } from "../common/LoadMoreButton";
@@ -201,21 +206,14 @@ export function ProfileView() {
                     variant="body2"
                     sx={{
                       fontStyle: taxonNameFontStyle(id.scientific_name, id.taxon_rank),
-                      color: "primary.main",
-                      fontWeight: 500,
+                      ...observationGridCardTitleSx,
                     }}
                   >
                     {id.scientific_name}
                   </Typography>
                 </Box>
                 <CardContent sx={observationGridCardContentSx}>
-                  <Typography
-                    variant="caption"
-                    noWrap
-                    sx={{
-                      color: "text.disabled",
-                    }}
-                  >
+                  <Typography variant="caption" noWrap sx={observationGridCardTimeSx}>
                     <RelativeTime date={new Date(id.date_identified)} />
                   </Typography>
                 </CardContent>
