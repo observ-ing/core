@@ -143,10 +143,49 @@ fn invalid_did(did_str: &str, e: &dyn std::fmt::Display) -> Response {
         .into_response()
 }
 
+/// Image types served inline. Anything else a PDS labels a blob with (HTML,
+/// SVG, ...) would run as script on this origin, so it goes out as an
+/// attachment instead. SVG is deliberately absent: it can carry script.
+const INLINE_IMAGE_TYPES: &[&str] = &[
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/avif",
+    "image/heic",
+    "image/heif",
+];
+
+/// The content type to serve for a blob the PDS labelled `content_type`, and
+/// whether it can be shown inline.
+fn safe_content_type(content_type: &str) -> (&'static str, bool) {
+    let essence = content_type
+        .split(';')
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+    match INLINE_IMAGE_TYPES.iter().find(|t| **t == essence) {
+        Some(t) => (t, true),
+        None => ("application/octet-stream", false),
+    }
+}
+
 fn media_response(data: Vec<u8>, content_type: &str, from_cache: bool) -> Response {
+    let (content_type, inline) = safe_content_type(content_type);
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, content_type)
+        .header(
+            header::CONTENT_DISPOSITION,
+            if inline { "inline" } else { "attachment" },
+        )
+        // Bytes come from a user's PDS: even if a browser renders them as a
+        // document, no script runs and nothing loads.
+        .header(
+            header::CONTENT_SECURITY_POLICY,
+            "default-src 'none'; sandbox",
+        )
         // Keyed by CID, so the bytes for a URL never change.
         .header(header::CACHE_CONTROL, "public, max-age=31536000, immutable")
         .header("X-Cache", if from_cache { "HIT" } else { "MISS" })
@@ -234,6 +273,14 @@ pub(crate) async fn fetch_and_cache(
             error!(did = %did, error = %e, "Failed to resolve PDS URL");
             e
         })?;
+
+    if media.public_only {
+        let url = url::Url::parse(&pds_url)?;
+        if let Err(e) = crate::media::public_net::check_url(&url) {
+            warn!(did = %did, pds_url = %pds_url, error = %e, "Refusing to fetch from PDS");
+            return Err(e.into());
+        }
+    }
 
     let (data, content_type) = match media.fetcher.fetch_blob(&pds_url, did_str, cid).await {
         Ok(blob) => blob,
@@ -331,6 +378,63 @@ mod tests {
         assert_eq!(resp.headers()[header::CONTENT_TYPE], "image/heic");
         assert_eq!(body_bytes(resp).await, original);
         assert!(media.cache.get(DID, &thumb_cache_cid(CID)).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn non_image_blobs_are_served_as_attachments() {
+        for content_type in ["text/html", "image/svg+xml", "text/html; charset=utf-8", ""] {
+            let (media, _dir) = media_with(b"<script>alert(1)</script>", content_type).await;
+            let resp = serve_blob(&media, DID, CID).await;
+            assert_eq!(resp.status(), StatusCode::OK);
+            let headers = resp.headers();
+            assert_eq!(
+                headers[header::CONTENT_TYPE],
+                "application/octet-stream",
+                "{content_type}"
+            );
+            assert_eq!(headers[header::CONTENT_DISPOSITION], "attachment");
+            assert_eq!(
+                headers[header::CONTENT_SECURITY_POLICY],
+                "default-src 'none'; sandbox"
+            );
+
+            // The thumb route's fall-back-to-the-original path too.
+            let resp = serve_thumb(&media, DID, CID).await;
+            assert_eq!(
+                resp.headers()[header::CONTENT_TYPE],
+                "application/octet-stream"
+            );
+        }
+    }
+
+    #[test]
+    fn image_types_are_normalized_and_kept_inline() {
+        assert_eq!(safe_content_type("image/jpeg"), ("image/jpeg", true));
+        assert_eq!(safe_content_type(" Image/PNG ; q=1"), ("image/png", true));
+        assert_eq!(safe_content_type("image/heic"), ("image/heic", true));
+        assert_eq!(
+            safe_content_type("image/svg+xml"),
+            ("application/octet-stream", false)
+        );
+    }
+
+    #[tokio::test]
+    async fn non_public_pds_is_refused_when_public_only() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = BlobCache::new(dir.path().to_path_buf(), 1024 * 1024, 3600);
+        cache.init().await.unwrap();
+        let media = MediaCache::build(cache, true);
+        // A did:web naming the metadata server, which resolves without any
+        // network lookup.
+        let did = Did::new_owned("did:web:169.254.169.254").unwrap();
+        let err = fetch_and_cache(
+            &media,
+            &did,
+            "bafkreifzjut3te2nhyekklss27nh3k72ysco7y32koao5eei66wof36n5e",
+        )
+        .await
+        .unwrap_err();
+        assert!(err.to_string().contains("non-public"), "{err}");
     }
 
     #[tokio::test]

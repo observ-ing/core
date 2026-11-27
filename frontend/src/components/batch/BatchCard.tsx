@@ -38,6 +38,7 @@ import {
 import { formatCoordinate } from "../../lib/utils";
 import { monoStack } from "../../theme";
 import { setPhotoDragImage } from "./photoDragImage";
+import { StatusLine } from "./StatusLine";
 
 /** Attribute marking an element whose clicks must not clear the page's selection. */
 export const KEEPS_SELECTION = "data-keeps-selection";
@@ -473,13 +474,7 @@ export function BatchCard({
           </>
         )}
         {status === "queued" && (
-          <Typography
-            variant="body2"
-            sx={{ display: "flex", alignItems: "center", gap: 0.5, fontWeight: 600 }}
-          >
-            <ScheduleIcon sx={captionIconSx} />
-            Queued
-          </Typography>
+          <StatusLine icon={<ScheduleIcon sx={captionIconSx} />}>Queued</StatusLine>
         )}
         {status === "uploading" && (
           <Typography variant="body2" sx={{ fontWeight: 600, color: "primary.main" }}>
@@ -487,35 +482,15 @@ export function BatchCard({
           </Typography>
         )}
         {status === "done" && (
-          <Typography
-            variant="body2"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              fontWeight: 600,
-              color: "success.main",
-            }}
-          >
-            <CheckCircleIcon sx={captionIconSx} />
+          <StatusLine icon={<CheckCircleIcon sx={captionIconSx} />} color="success.main">
             Uploaded
-          </Typography>
+          </StatusLine>
         )}
         {failed && (
           <>
-            <Typography
-              variant="body2"
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.5,
-                fontWeight: 600,
-                color: "error.main",
-              }}
-            >
-              <ErrorIcon sx={captionIconSx} />
+            <StatusLine icon={<ErrorIcon sx={captionIconSx} />} color="error.main">
               Upload failed
-            </Typography>
+            </StatusLine>
             {observation.error && (
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 {observation.error}

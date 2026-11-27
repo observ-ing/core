@@ -2,10 +2,20 @@
 
 use crate::error::{BlobResolverError, Result};
 use atproto_identity::{Did, DidExt, DidMethod};
+use jacquard_common::types::cid::IpldCid;
 use jacquard_common::types::string::AtUri;
 use reqwest::Client;
+use sha2::{Digest, Sha256};
 use std::str::FromStr;
 use tracing::{debug, warn};
+
+/// The largest blob [`BlobResolver::fetch_blob`] will read. Generous next to
+/// the lexicons' own limits (10 MB for an observation photo); it exists so a
+/// hostile PDS can't stream an unbounded body into memory.
+pub const MAX_BLOB_BYTES: usize = 50 * 1024 * 1024;
+
+/// Multihash code for sha2-256, the only hash atproto blob CIDs use.
+const SHA2_256: u64 = 0x12;
 
 /// Resolves AT Protocol DIDs to PDS endpoints and fetches blobs
 pub struct BlobResolver {
@@ -57,13 +67,20 @@ impl BlobResolver {
         Ok(url)
     }
 
-    /// Fetch a blob from a PDS server
+    /// Fetch a blob from a PDS server.
+    ///
+    /// The PDS is untrusted: the body is capped at [`MAX_BLOB_BYTES`] and must
+    /// hash to `cid`, so a PDS can't serve different bytes than the record
+    /// references. The returned content type is still whatever the PDS said.
     pub async fn fetch_blob(
         &self,
         pds_url: &str,
         did: &str,
         cid: &str,
     ) -> Result<(Vec<u8>, String)> {
+        // Parse first so a malformed CID never costs a request.
+        let expected = sha256_digest_of_cid(cid)?;
+
         let url = format!(
             "{}/xrpc/com.atproto.sync.getBlob?did={}&cid={}",
             pds_url,
@@ -73,7 +90,7 @@ impl BlobResolver {
 
         debug!(url = %url, "Fetching blob from PDS");
 
-        let response = self.client.get(&url).send().await?;
+        let mut response = self.client.get(&url).send().await?;
 
         if !response.status().is_success() {
             warn!(status = %response.status(), url = %url, "Failed to fetch blob");
@@ -90,7 +107,25 @@ impl BlobResolver {
             .unwrap_or("application/octet-stream")
             .to_string();
 
-        let data = response.bytes().await?.to_vec();
+        if response
+            .content_length()
+            .is_some_and(|len| len > MAX_BLOB_BYTES as u64)
+        {
+            return Err(too_large());
+        }
+        let mut data = Vec::new();
+        while let Some(chunk) = response.chunk().await? {
+            if data.len() + chunk.len() > MAX_BLOB_BYTES {
+                return Err(too_large());
+            }
+            data.extend_from_slice(&chunk);
+        }
+
+        if Sha256::digest(&data)[..] != expected[..] {
+            return Err(BlobResolverError::InvalidBlob(format!(
+                "bytes don't match CID {cid}"
+            )));
+        }
 
         debug!(
             size = data.len(),
@@ -171,6 +206,23 @@ impl BlobResolver {
     }
 }
 
+fn too_large() -> BlobResolverError {
+    BlobResolverError::InvalidBlob(format!("larger than {MAX_BLOB_BYTES} bytes"))
+}
+
+/// The sha2-256 digest a blob CID commits to.
+fn sha256_digest_of_cid(cid: &str) -> Result<Vec<u8>> {
+    let parsed = IpldCid::try_from(cid)
+        .map_err(|e| BlobResolverError::InvalidBlob(format!("unparseable CID {cid}: {e}")))?;
+    let hash = parsed.hash();
+    if hash.code() != SHA2_256 {
+        return Err(BlobResolverError::InvalidBlob(format!(
+            "CID {cid} isn't a sha2-256 hash"
+        )));
+    }
+    Ok(hash.digest().to_vec())
+}
+
 impl Default for BlobResolver {
     fn default() -> Self {
         Self::new()
@@ -207,6 +259,70 @@ mod tests {
 
         let result = resolver.resolve_web_did(&did, host).unwrap();
         assert_eq!(result, "https://example.com:8080");
+    }
+
+    /// CIDv1 (raw, sha2-256) of `b"hello world"`.
+    const HELLO_CID: &str = "bafkreifzjut3te2nhyekklss27nh3k72ysco7y32koao5eei66wof36n5e";
+
+    async fn pds_serving(body: Vec<u8>, content_type: &str) -> wiremock::MockServer {
+        use wiremock::matchers::path;
+        use wiremock::{Mock, ResponseTemplate};
+        let server = wiremock::MockServer::start().await;
+        Mock::given(path("/xrpc/com.atproto.sync.getBlob"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, content_type))
+            .mount(&server)
+            .await;
+        server
+    }
+
+    #[tokio::test]
+    async fn fetch_blob_returns_bytes_matching_the_cid() {
+        let server = pds_serving(b"hello world".to_vec(), "image/jpeg").await;
+        let (data, content_type) = BlobResolver::new()
+            .fetch_blob(&server.uri(), "did:plc:x", HELLO_CID)
+            .await
+            .unwrap();
+        assert_eq!(data, b"hello world");
+        assert_eq!(content_type, "image/jpeg");
+    }
+
+    #[tokio::test]
+    async fn fetch_blob_rejects_bytes_not_matching_the_cid() {
+        let server = pds_serving(b"<script>alert(1)</script>".to_vec(), "text/html").await;
+        let err = BlobResolver::new()
+            .fetch_blob(&server.uri(), "did:plc:x", HELLO_CID)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, BlobResolverError::InvalidBlob(_)), "{err}");
+    }
+
+    #[tokio::test]
+    async fn fetch_blob_rejects_oversized_bodies() {
+        let server = pds_serving(vec![0; MAX_BLOB_BYTES + 1], "image/jpeg").await;
+        let err = BlobResolver::new()
+            .fetch_blob(&server.uri(), "did:plc:x", HELLO_CID)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, BlobResolverError::InvalidBlob(_)), "{err}");
+    }
+
+    #[tokio::test]
+    async fn fetch_blob_rejects_non_sha256_and_malformed_cids() {
+        let resolver = BlobResolver::new();
+        // Same digest under the sha2-512 multihash code; no request is made.
+        for cid in [
+            "bafkrgifzjut3te2nhyekklss27nh3k72ysco7y32koao5eei66wof36n5e",
+            "not-a-cid",
+        ] {
+            let err = resolver
+                .fetch_blob("http://127.0.0.1:9", "did:plc:x", cid)
+                .await
+                .unwrap_err();
+            assert!(
+                matches!(err, BlobResolverError::InvalidBlob(_)),
+                "{cid}: {err}"
+            );
+        }
     }
 
     #[tokio::test]

@@ -771,10 +771,16 @@ export function UploadModal() {
                         }}
                         onSelectAncestor={(ancestor) => {
                           setSpecies(ancestor.name);
-                          setMatchedTaxon(null);
                           setIsDirty(true);
-                          if (ancestor.kingdom) setKingdom(ancestor.kingdom);
-                          setRank(ancestor.rank);
+                          if (ancestor.match) {
+                            setMatchedTaxon(ancestor.match);
+                            setKingdom(ancestor.match.kingdom ?? "");
+                            setRank("");
+                          } else {
+                            setMatchedTaxon(null);
+                            if (ancestor.kingdom) setKingdom(ancestor.kingdom);
+                            setRank(ancestor.rank);
+                          }
                         }}
                         disabled={isSubmitting}
                       />

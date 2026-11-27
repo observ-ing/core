@@ -18,6 +18,10 @@ against the same appview.
   observations, pictures, GBIF and Wikidata; observ.ing's `/taxon/:id` links
   (a GBIF id or a name) open it too.
 - **Search**: taxa by name, saying which synonym a result matched.
+- **Docs** (Account): observ.ing's reference pages at its own paths: the
+  lexicons (`/lexicons`), the monthly hosting costs (`/transparency`), which
+  services are awake (`/status`, from the appview's `/api/status`), and links
+  to the API reference, Storybook and the source.
 - **Signed in**: like and unlike, comment, suggest an identification from a
   taxon search or agree with the one shown (and withdraw your own), delete
   your own observation after a confirmation, a Notifications tab (unread
@@ -54,16 +58,17 @@ against the same appview.
   cross-post preferences; "Also post to iNaturalist" on New Observation and
   Batch Upload (your preference until changed); on your own observations, its
   cross-post status, View on iNaturalist, and Post (or Try Again).
-- **Polish**: observ.ing's green as the accent (`app.forma`); a welcome card
-  at the top of Explore on a signed-out first visit (Sign In or Just Browse,
-  remembered); an offline banner with Try Again; a profile's Identifications
-  beside its Observations; a not-found screen for an observation, profile or
-  taxon the appview doesn't have; a moment's message when a write succeeds
-  (a comment, an identification, a deletion, an edit). Its routes are observ.ing's own
-  (`/observation/:did/:rkey`, `/profile/:did`, `/taxon/:kingdom/:name`), so
-  observ.ing links open the same screens; on iOS, `applinks:observ.ing` is
-  declared, which needs observ.ing to serve an apple-app-site-association
-  naming the app.
+- **Polish**: observ.ing's green as the accent (`app.forma`, and the root's
+  `accent-color`, since Android otherwise paints in the device's Material You
+  colour); a welcome card at the top of Explore on a signed-out first visit
+  (Sign In or Just Browse, remembered); an offline banner with Try Again; a
+  profile's Identifications beside its Observations; a not-found screen for an
+  observation, profile or taxon the appview doesn't have; a moment's message
+  when a write succeeds (a comment, an identification, a deletion, an edit).
+  Its routes are observ.ing's own (`/observation/:did/:rkey`, `/profile/:did`,
+  `/taxon/:kingdom/:name`), so observ.ing links open the same screens; on iOS,
+  `applinks:observ.ing` is declared, which needs observ.ing to serve an
+  apple-app-site-association naming the app.
 - **Sign in** (Account tab) with an atproto handle, and the signed-in **Home**
   feed. The system browser runs the appview's OAuth flow (`GET
   /oauth/app/login`), which redirects back to the app with a one-time code;
@@ -83,9 +88,13 @@ Files:
   placeholder PNG in `assets/photos` (Exact's Linux host has no JPEG decoder).
 - `fixtures/api.json`: real appview responses, recorded verbatim by `bun
   record.ts [origin]` (default https://observ.ing) and filed by `fixture-key.ts`.
-- `bindings/`: the appview's ts-rs types, copied from `frontend/src/bindings` by
-  `bun sync-bindings.ts` (`--check` fails when stale): an Exact build reads only
-  files inside this directory.
+- `bindings/` and `data/`: what the app shares with the rest of the repo, copied
+  in by `bun sync.ts` (an Exact build reads only files inside this directory):
+  the appview's ts-rs types from `frontend/src/bindings`, the lexicons from
+  `lexicons/` and the hosting costs from `frontend/src/data/transparency.json`.
+  `npm run bindings` at the repo root regenerates the bindings and runs it.
+  CI runs `bun sync.ts --check`, which fails when a copy is stale, in
+  `ts-bindings-check` (a required check) as well as `exact-test`.
 - `app.test.contract`: tests against the recorded fixtures.
 
 ## Running it

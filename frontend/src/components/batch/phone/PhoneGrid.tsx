@@ -48,6 +48,8 @@ import {
 import { plural } from "../../../lib/utils";
 import { SelectionBox, formatBatchDate } from "../BatchCard";
 import { BottomBar, StackedAction } from "./PhoneStep";
+import { ConvertingStatus } from "../ConvertingStatus";
+import { StatusLine } from "../StatusLine";
 
 /** Touch-sized pill for the All / Incomplete filter chips. */
 const filterChipSx = { height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 };
@@ -189,34 +191,22 @@ function PhoneCard({
                 </Typography>
               )}
               {missing.length > 0 && (
-                <Typography
+                <StatusLine
                   variant="caption"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    fontWeight: 600,
-                    color: "warning.main",
-                  }}
+                  icon={<WarningAmberIcon sx={miniIconSx} />}
+                  color="warning.main"
                 >
-                  <WarningAmberIcon sx={miniIconSx} />
                   {describeMissing(missing)}
-                </Typography>
+                </StatusLine>
               )}
               {failed && (
-                <Typography
+                <StatusLine
                   variant="caption"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    fontWeight: 600,
-                    color: "error.main",
-                  }}
+                  icon={<ErrorIcon sx={miniIconSx} />}
+                  color="error.main"
                 >
-                  <ErrorIcon sx={miniIconSx} />
                   Upload failed
-                </Typography>
+                </StatusLine>
               )}
             </>
           )}
@@ -330,16 +320,7 @@ export function PhoneGrid({
                   sx={filterChipSx}
                 />
               )}
-              {converting > 0 && (
-                <Typography
-                  role="status"
-                  variant="body2"
-                  sx={{ display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}
-                >
-                  <CircularProgress size={14} color="inherit" />
-                  Converting {plural(converting, "HEIC photo")}…
-                </Typography>
-              )}
+              <ConvertingStatus count={converting} variant="body2" />
             </Box>
           </>
         )}

@@ -6,12 +6,17 @@ import type { Occurrence } from "../../services/types";
 import { getImageUrl } from "../../services/api";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "./RelativeTime";
-import { shouldItalicizeTaxonName } from "./TaxonLink";
+import { taxonNameFontStyle } from "./TaxonLink";
 import { ImageWithSkeleton } from "./ImageWithSkeleton";
 import { pendingCardSx } from "./PendingBadge";
 
 // Shared with ObservationGridCardSkeleton so the loading placeholder can't drift from the real layout.
 export const observationGridCardContentSx = { p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 };
+
+// The taxon-name and timestamp text styles, shared with ProfileView's identification cards so the
+// two grid-card flavours read the same.
+export const observationGridCardTitleSx = { color: "primary.main", fontWeight: 500 };
+export const observationGridCardTimeSx = { color: "text.disabled" };
 
 interface ObservationGridCardProps {
   observation: Occurrence;
@@ -51,12 +56,8 @@ export const ObservationGridCard = memo(function ObservationGridCard({
           <Typography
             variant="body2"
             sx={{
-              fontStyle:
-                species && shouldItalicizeTaxonName(species, observation.effectiveTaxonomy?.rank)
-                  ? "italic"
-                  : "normal",
-              color: "primary.main",
-              fontWeight: 500,
+              fontStyle: taxonNameFontStyle(species, observation.effectiveTaxonomy?.rank),
+              ...observationGridCardTitleSx,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -64,13 +65,7 @@ export const ObservationGridCard = memo(function ObservationGridCard({
           >
             {species || "Unknown species"}
           </Typography>
-          <Typography
-            variant="caption"
-            noWrap
-            sx={{
-              color: "text.disabled",
-            }}
-          >
+          <Typography variant="caption" noWrap sx={observationGridCardTimeSx}>
             <RelativeTime date={new Date(observation.createdAt)} />
           </Typography>
         </CardContent>

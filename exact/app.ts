@@ -9,9 +9,13 @@ import type { TaxonDetailWithCount } from './bindings/TaxonDetailWithCount.ts';
 import type { CreateOccurrenceRequest } from './bindings/CreateOccurrenceRequest.ts';
 import type { UpdateOccurrenceRequest } from './bindings/UpdateOccurrenceRequest.ts';
 import type { SpeciesSuggestion } from './bindings/SpeciesSuggestion.ts';
+import type { RankFallback } from './bindings/RankFallback.ts';
 import { readExif } from './exif.ts';
 import { discard, enqueue, readQueue, retry, sendWaiting } from './queue.ts';
 import { WEB } from './web-origin.ts';
+// The repo's lexicons and hosting costs, copied in by sync.ts (CI checks they match).
+import lexiconFiles from './data/lexicons.json';
+import costs from './data/transparency.json';
 
 // Exact's host functions for a browser sign-in (as @exact/oauth declares them).
 declare function openAuthSession(url: string, options: { callback: string; state: string; ephemeral?: boolean }): Promise<string>;
@@ -224,10 +228,16 @@ function describe(path: string, store: Store, storage: Storage): Promise<PhotoFa
 }
 
 type EnrichedSuggestion = SpeciesSuggestion & { taxonMatch?: TaxaResult | null };
+// The broader taxon the appview sends when no species is confident, e.g. the
+// genus Bombus when the model can't tell bumble bees apart.
+type EnrichedFallback = RankFallback & { commonName?: string | null; taxonMatch?: TaxaResult | null };
 type Suggestion = Result<'suggestSpecies'>[number];
 
 // The appview's model on a photo, near `place` when given. `live` asks for the
-// faster model the camera loop uses. No model (or a busy one): none.
+// faster model the camera loop uses, which shows species only. No model (or a
+// busy one): none. When no species is confident but a broader rank is, that
+// rank comes first, marked `fallback`: its confidence is a probability ("72%
+// likely"), not the species' similarity score.
 async function suggest(
   path: string, place: { latitude: number; longitude: number } | null, store: Store, storage: Storage, limit: number, live = false,
 ): Promise<Suggestion[]> {
@@ -239,15 +249,30 @@ async function suggest(
     exactTimeout: 60000,
   });
   if (!response.ok) return [];
-  const body = (await response.json()) as { suggestions: EnrichedSuggestion[] };
-  return body.suggestions.map((s) => ({
+  const body = (await response.json()) as { suggestions: EnrichedSuggestion[]; fallback?: EnrichedFallback | null };
+  const species = body.suggestions.map((s) => ({
     scientificName: s.taxonMatch?.scientificName ?? s.scientificName,
     commonName: s.taxonMatch?.commonName ?? s.commonName ?? '',
     rank: s.taxonMatch?.rank ?? 'species',
     kingdom: s.taxonMatch?.kingdom ?? s.kingdom ?? '',
     confidence: Math.round(s.confidence * 100),
     inRange: s.inRange ?? true,
+    fallback: false,
+    above: '',
   }));
+  const f = live ? null : body.fallback;
+  if (!f) return species;
+  return [{
+    scientificName: f.taxonMatch?.scientificName ?? f.scientificName,
+    commonName: f.commonName ?? f.taxonMatch?.commonName ?? '',
+    rank: f.taxonMatch?.rank ?? f.rank,
+    // Only the ranks above `rank` are set, so a kingdom is its own kingdom.
+    kingdom: f.taxonMatch?.kingdom ?? f.kingdom ?? (f.rank === 'kingdom' ? f.scientificName : ''),
+    confidence: Math.round(f.confidence * 100),
+    inRange: true,
+    fallback: true,
+    above: '',
+  }, ...species.map((s, n) => (n === 0 ? { ...s, above: 'If you can tell which species:' } : s))];
 }
 
 const NOTICE: Record<string, string> = {
@@ -471,6 +496,42 @@ const QUALITY: Record<string, string> = {
   COORDINATES_IMPRECISE: 'Location is imprecise',
   NO_CONSENSUS_ID: 'No community identification yet',
 };
+
+// --- The reference pages: docs, lexicons, hosting costs and service status ----
+
+type LexiconProperty = {
+  type: string; format?: string; ref?: string; items?: LexiconProperty; description?: string;
+  enum?: string[]; knownValues?: string[]; maxLength?: number; default?: unknown;
+};
+type LexiconDef = {
+  type: string; description?: string; key?: string; required?: string[];
+  record?: { required?: string[]; properties?: Record<string, LexiconProperty> };
+  properties?: Record<string, LexiconProperty>;
+};
+type LexiconSchema = { id: string; description?: string; defs: Record<string, LexiconDef> };
+
+// "ref → strongRef", "array<string (uri)>", "string (datetime)", as the original writes a type.
+function lexiconType(p: LexiconProperty): string {
+  if (p.type === 'ref' && p.ref) return `ref → ${p.ref.startsWith('#') ? p.ref.slice(1) : p.ref}`;
+  if (p.type === 'array' && p.items) return `array<${lexiconType(p.items)}>`;
+  return p.format && p.type !== 'blob' ? `${p.type} (${p.format})` : p.type;
+}
+
+// "$1,234.56", without Intl: not every host's JavaScript has it.
+function money(n: number, currency: string): string {
+  const [whole = '0', cents = '00'] = Math.abs(n).toFixed(2).split('.');
+  return `${n < 0 ? '-' : ''}${currency === 'USD' ? '$' : `${currency} `}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${cents}`;
+}
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+// "2026-10" as "October 2026".
+function monthName(m: string): string {
+  const [year, month] = m.split('-');
+  const name = MONTHS[Number(month) - 1];
+  return year && name ? `${name} ${year}` : m;
+}
+
+const STATE_LABELS: Record<string, string> = { awake: 'Awake', asleep: 'Asleep', up: 'Up', down: 'Down' };
+type ServiceStatus = { id: string; name: string; description: string; state: string; instances?: number | null; activeInstances?: number | null };
 
 const sources: Sources = {
   loadFeed: async ([kingdom, taxon, quality, startDate, endDate, wanted], store) => {
@@ -981,13 +1042,15 @@ const sources: Sources = {
   },
 
   // --- Batch upload: one observation per photo -------------------------------
-  // The model's best guess for each photo, for a one-tap species.
+  // The model's best guess for each photo, for a one-tap species: its broader
+  // rank when no species is confident.
   batchSuggestions: ([paths], store, storage) => Promise.all(paths.map(async (path) => {
-    const none = { path, scientificName: '', rank: '', kingdom: '', label: '', confidence: 0 };
+    const none = { path, scientificName: '', rank: '', kingdom: '', label: '', confidence: 0, fallback: false };
     try {
       const [top] = await suggest(path, null, store, storage, 1);
       return top ? { path, scientificName: top.scientificName, rank: top.rank, kingdom: top.kingdom,
-        label: top.commonName ? `${top.commonName} · ${top.scientificName}` : top.scientificName, confidence: top.confidence } : none;
+        label: top.commonName ? `${top.commonName} · ${top.scientificName}` : top.scientificName, confidence: top.confidence,
+        fallback: top.fallback } : none;
     } catch {
       return none;
     }
@@ -1118,6 +1181,79 @@ const sources: Sources = {
         ...parts(i.subject_uri),
       })),
       more: !!body.cursor && body.identifications.length >= limit && limit < 50,
+    };
+  },
+
+  // --- The reference pages.
+  loadAbout: async () => ({ apiDocs: `${API}/api/docs` }),
+
+  // Each lexicon's definitions and their properties, observ.ing's own first.
+  loadLexicons: async () => {
+    const project = (id: string) => id.startsWith('ing.observ.') || id.startsWith('bio.lexicons.');
+    // The JSON's own inferred type is each file's exact shape; read them all as a schema.
+    return (lexiconFiles as unknown as LexiconSchema[])
+      .map((schema) => ({
+        id: schema.id,
+        description: schema.defs.main?.description ?? schema.description ?? '',
+        project: project(schema.id),
+        defs: Object.entries(schema.defs).map(([name, def]) => {
+          const required = def.record?.required ?? def.required ?? [];
+          return {
+            name,
+            type: def.type,
+            key: def.key ?? '',
+            description: name === 'main' ? '' : def.description ?? '',
+            props: Object.entries(def.record?.properties ?? def.properties ?? {}).map(([prop, p]) => ({
+              name: prop,
+              type: lexiconType(p),
+              required: required.includes(prop),
+              deprecated: (p.description ?? '').includes('[DEPRECATED'),
+              description: p.description ?? '',
+              values: p.enum ?? p.knownValues ?? [],
+              notes: [p.maxLength != null ? `max length: ${p.maxLength}` : '', p.default != null ? `default: ${String(p.default)}` : '']
+                .filter((n) => n !== '').join(' · '),
+            })),
+          };
+        }),
+      }))
+      .sort((a, b) => Number(b.project) - Number(a.project));
+  },
+
+  // The monthly hosting costs as a table: newest month first, one column per category, with totals.
+  loadTransparency: async () => {
+    const columns = costs.categories.map((c) => c.name);
+    const months = [...costs.months].sort((a, b) => b.month.localeCompare(a.month));
+    const cost = (m: (typeof months)[number], name: string) => m.items.find((i) => i.name === name)?.cost ?? 0;
+    const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
+    const format = (n: number) => money(n, costs.currency);
+    return {
+      notes: costs.notes,
+      columns,
+      rows: months.map((m) => ({
+        month: monthName(m.month),
+        cells: columns.map((c) => format(cost(m, c))),
+        total: format(sum(m.items.map((i) => i.cost))),
+      })),
+      totals: columns.map((c) => format(sum(months.map((m) => cost(m, c))))),
+      total: format(sum(months.flatMap((m) => m.items.map((i) => i.cost)))),
+      categories: costs.categories,
+    };
+  },
+
+  // Which services are running, as the appview checks them.
+  loadStatus: async (_args, store) => {
+    const body = await get<{ services: ServiceStatus[]; checkedAt: string }>('/api/status', store);
+    return {
+      services: body.services.map((s) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        state: s.state,
+        label: STATE_LABELS[s.state] ?? s.state,
+        summary: s.instances == null ? '' : s.instances === 0 ? 'No instances'
+          : `${s.instances} ${s.instances === 1 ? 'instance' : 'instances'}${s.activeInstances ? `, ${s.activeInstances} busy` : ''}`,
+      })),
+      checkedAt: instant(body.checkedAt),
     };
   },
 };

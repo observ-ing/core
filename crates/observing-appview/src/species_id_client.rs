@@ -4,7 +4,9 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use utoipa::ToSchema;
 
-pub use observing_species_id_protocol::{IdentifyRequest, IdentifyResponse};
+pub use observing_species_id_protocol::{
+    IdentifyRequest, IdentifyResponse, RankFallback, TaxonRank,
+};
 
 /// How long `/identify` may take end to end. The species-id services scale to
 /// zero, so a request can land on a cold instance and wait for it to boot

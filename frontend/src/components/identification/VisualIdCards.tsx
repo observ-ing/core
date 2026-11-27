@@ -1,6 +1,7 @@
 import { Box, ButtonBase, Stack, Typography } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import type { SpeciesSuggestion } from "../../services/api";
+import type { IdentifyFallback, SpeciesSuggestion } from "../../services/api";
+import type { TaxaResult } from "../../services/types";
 import { buildTaxonUrl } from "../../lib/taxonSlug";
 import { ExternalLinkIconButton } from "../common/ExternalLinkIconButton";
 import { InRangeIndicator } from "../common/InRangeIndicator";
@@ -36,14 +37,24 @@ interface AncestorMatch {
   rank: AncestorRank;
   name: string;
   kingdom: string | undefined;
-  /** Sum of candidate confidences — what the model would say at this rank. */
+  /**
+   * From the server: the share of the model's probability on this taxon.
+   * Worked out here: the sum of the candidates' confidences.
+   */
   confidence: number;
+  /** Whether the server picked this rank, rather than `findCommonAncestor`. */
+  fromServer: boolean;
+  commonName?: string | undefined;
+  /** The GBIF taxon the name resolved to, when the server found one. */
+  match?: TaxaResult | undefined;
 }
 
 export interface AncestorSelection {
   rank: AncestorRank;
   name: string;
   kingdom: string | undefined;
+  /** Set when the name resolved to a known taxon; pick it like a search result. */
+  match?: TaxaResult | undefined;
 }
 
 type Mode = "single" | "dominant" | "ambiguous";
@@ -81,6 +92,25 @@ function TaxonLinkButton({ url, taxonName }: { url: string; taxonName: string })
   return <ExternalLinkIconButton href={url} label={taxonName} sx={{ ml: 0.5 }} />;
 }
 
+/**
+ * The server's fallback rank. It weighs every species the model knows rather
+ * than just the few suggestions sent here, so it's preferred over
+ * `findCommonAncestor` whenever the server sends one.
+ */
+function ancestorFromFallback(fallback: IdentifyFallback): AncestorMatch {
+  return {
+    rank: fallback.rank,
+    name: fallback.scientificName,
+    // Only the ranks above `rank` are set, so a kingdom is its own kingdom.
+    kingdom:
+      fallback.kingdom ?? (fallback.rank === "kingdom" ? fallback.scientificName : undefined),
+    confidence: fallback.confidence,
+    fromServer: true,
+    commonName: fallback.commonName ?? fallback.taxonMatch?.commonName,
+    match: fallback.taxonMatch,
+  };
+}
+
 function findCommonAncestor(suggestions: SpeciesSuggestion[]): AncestorMatch | null {
   if (suggestions.length < 2) return null;
   const first = suggestions[0];
@@ -95,6 +125,7 @@ function findCommonAncestor(suggestions: SpeciesSuggestion[]): AncestorMatch | n
       rank,
       name,
       kingdom: first.kingdom,
+      fromServer: false,
       // Cap at 1.0: model output isn't always probability-normalized, so the
       // raw sum of candidate confidences can exceed 100%.
       confidence: Math.min(
@@ -108,36 +139,42 @@ function findCommonAncestor(suggestions: SpeciesSuggestion[]): AncestorMatch | n
 
 interface VisualIdCardsProps {
   suggestions: SpeciesSuggestion[];
+  /**
+   * The server's broader rank for when no species is confident. When set,
+   * it leads the list in place of the rank worked out from `suggestions`.
+   */
+  fallback?: IdentifyFallback | undefined;
   onSelectSpecies: (suggestion: SpeciesSuggestion) => void;
   onSelectAncestor: (ancestor: AncestorSelection) => void;
 }
 
 export function VisualIdCards({
   suggestions,
+  fallback,
   onSelectSpecies,
   onSelectAncestor,
 }: VisualIdCardsProps) {
-  if (suggestions.length === 0) return null;
-
+  const serverAncestor = fallback ? ancestorFromFallback(fallback) : null;
   const sorted = [...suggestions].sort((a, b) => b.confidence - a.confidence);
   const top = sorted[0];
-  if (!top) return null;
+  if (!top && !serverAncestor) return null;
   const rest = sorted.slice(1);
-  const mode = determineMode(sorted);
-  const ancestor = mode !== "single" ? findCommonAncestor(sorted) : null;
+  // The server only sends a fallback when no species is confident on its own.
+  const mode: Mode = serverAncestor ? "ambiguous" : determineMode(sorted);
+  const ancestor = serverAncestor ?? (mode !== "single" ? findCommonAncestor(sorted) : null);
 
-  const ancestorSelection = ancestor
-    ? { rank: ancestor.rank, name: ancestor.name, kingdom: ancestor.kingdom }
+  const ancestorSelection: AncestorSelection | null = ancestor
+    ? { rank: ancestor.rank, name: ancestor.name, kingdom: ancestor.kingdom, match: ancestor.match }
     : null;
 
   return (
     <Box>
       <SectionHeader />
-      {mode === "single" && (
+      {mode === "single" && top && (
         <SpeciesCard suggestion={top} primary onSelect={() => onSelectSpecies(top)} />
       )}
 
-      {mode === "dominant" && (
+      {mode === "dominant" && top && (
         <Stack spacing={0.75}>
           <SpeciesCard suggestion={top} primary onSelect={() => onSelectSpecies(top)} />
           {rest.length > 0 && (
@@ -171,16 +208,22 @@ export function VisualIdCards({
               onSelect={() => onSelectAncestor(ancestorSelection)}
             />
           )}
-          <SectionLabel text={ancestor ? "If you can tell which species:" : "Possible species:"} />
-          <Stack spacing={0.5}>
-            {sorted.map((s) => (
-              <SpeciesCard
-                key={s.scientificName}
-                suggestion={s}
-                onSelect={() => onSelectSpecies(s)}
+          {sorted.length > 0 && (
+            <>
+              <SectionLabel
+                text={ancestor ? "If you can tell which species:" : "Possible species:"}
               />
-            ))}
-          </Stack>
+              <Stack spacing={0.5}>
+                {sorted.map((s) => (
+                  <SpeciesCard
+                    key={s.scientificName}
+                    suggestion={s}
+                    onSelect={() => onSelectSpecies(s)}
+                  />
+                ))}
+              </Stack>
+            </>
+          )}
         </Stack>
       )}
     </Box>
@@ -246,7 +289,14 @@ function AncestorName({ ancestor }: { ancestor: AncestorMatch }) {
 }
 
 function AncestorCard({ ancestor, onSelect }: { ancestor: AncestorMatch; onSelect: () => void }) {
-  const url = buildTaxonUrl(ancestor.name, ancestor.kingdom, ancestor.rank);
+  const url = buildTaxonUrl(
+    ancestor.name,
+    ancestor.kingdom,
+    ancestor.rank,
+    ancestor.match?.taxonId,
+  );
+  const photoUrl = ancestor.match?.photoUrl;
+  const percent = Math.round(ancestor.confidence * 100);
   return (
     <ButtonBase
       onClick={onSelect}
@@ -259,13 +309,30 @@ function AncestorCard({ ancestor, onSelect }: { ancestor: AncestorMatch; onSelec
         "&:hover": { bgcolor: "action.selected" },
       }}
     >
-      <RankChip rank={ancestor.rank} />
+      {photoUrl ? (
+        <TaxonThumbnail
+          src={photoUrl}
+          size={48}
+          emptyBgcolor="action.disabledBackground"
+          sx={{ flexShrink: 0 }}
+        />
+      ) : (
+        <RankChip rank={ancestor.rank} />
+      )}
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontWeight: 600 }}>
-          <AncestorName ancestor={ancestor} />
-        </Typography>
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: "baseline", flexWrap: "wrap" }}>
+          <Typography sx={{ fontWeight: 600 }}>
+            <AncestorName ancestor={ancestor} />
+          </Typography>
+          {ancestor.commonName && (
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              {ancestor.commonName}
+            </Typography>
+          )}
+        </Stack>
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          {RANK_LABEL[ancestor.rank]} · {Math.round(ancestor.confidence * 100)}% match
+          {RANK_LABEL[ancestor.rank]} ·{" "}
+          {ancestor.fromServer ? `${percent}% likely` : `${percent}% match`}
         </Typography>
       </Box>
       {url && <TaxonLinkButton url={url} taxonName={ancestor.name} />}

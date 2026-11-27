@@ -642,6 +642,7 @@ mod tests {
             },
             alt: None,
             license: license.map(str::to_string),
+            media_uri: None,
         }
     }
 

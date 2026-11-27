@@ -543,7 +543,8 @@ pub async fn delete_occurrence(
 /// Applies the edit on top of the record on the caller's PDS. The request is
 /// the full new state of the fields it carries: omitted optional fields are
 /// cleared, and existing media is kept only if its blob CID is listed in
-/// `retainedBlobCids`. Fields the request has no counterpart for, such as
+/// `retainedBlobCids`, or if observ.ing couldn't find its photo to show in
+/// the first place. Fields the request has no counterpart for, such as
 /// Darwin Core terms the form doesn't expose or fields another app wrote, are
 /// kept as they were, and so is the record's original `createdAt`.
 #[utoipa::path(
@@ -601,9 +602,9 @@ pub async fn update_occurrence(
         auth::get_at_record(&agent, did_parsed.clone(), &at_uri).await?;
     let existing_media_refs = existing_media_refs(&existing_value);
 
-    // Load the local DB row: its blob_entries are index-aligned with the PDS
-    // media strong refs (both are written together by create_occurrence),
-    // which lets us map blob CIDs → strong refs without a per-media fetch.
+    // Load the local DB row: each of its photos names the media record it was
+    // resolved from, which maps retained blob CIDs to strong refs without a
+    // fetch per photo.
     let existing_db_row = observing_db::occurrences::get(&state.pool, &body.uri)
         .await?
         .ok_or_else(|| AppError::NotFound("Occurrence not found".into()))?;
@@ -611,28 +612,13 @@ pub async fn update_occurrence(
 
     let retained_cids = body.retained_blob_cids.clone().unwrap_or_default();
 
-    let mut media_refs: Vec<StrongRef> = Vec::new();
-
-    if existing_media_refs.len() == existing_blobs.len() {
-        for (i, blob) in existing_blobs.iter().enumerate() {
-            let blob_cid = blob.image.ref_.cid();
-            if retained_cids.iter().any(|cid| cid == blob_cid) {
-                match StrongRef::deserialize(&existing_media_refs[i]) {
-                    Ok(strong_ref) => media_refs.push(strong_ref),
-                    Err(e) => {
-                        warn!(error = %e, "Failed to parse existing strong ref; dropping");
-                    }
-                }
-            }
-        }
-    } else {
-        warn!(
-            uri = %body.uri,
-            pds_count = existing_media_refs.len(),
-            db_count = existing_blobs.len(),
-            "Mismatch between PDS media and DB blob_entries; dropping retained media"
-        );
-    }
+    let mut media_refs = retained_media_refs(
+        existing_media_refs,
+        &existing_blobs,
+        &retained_cids,
+        |uri| fetch_media_blob_cid(&agent, uri),
+    )
+    .await;
 
     // Upload new images and append their strong refs to what was retained
     let (_new_blob_entries, new_media_refs) = upload_media_records(
@@ -818,6 +804,7 @@ async fn upload_media_records(
             },
             alt: None,
             license: license.map(str::to_string),
+            media_uri: None,
         });
 
         // The media record still uses the raw atrium BlobRef value, which
@@ -1046,6 +1033,86 @@ fn existing_media_refs(existing: &serde_json::Value) -> &[serde_json::Value] {
         .unwrap_or_default()
 }
 
+/// The existing media refs an edit keeps, in the record's order. Each ref is
+/// matched to its photo by the media record's URI, which the indexed photos
+/// carry, and kept if that photo's blob CID is in `retained_cids`. A ref with
+/// no indexed photo naming it may be one of the row's photos indexed before
+/// photos carried their URI: it gets its blob CID from `fetch_blob_cid`,
+/// counted only if one of those photos has it. Any other ref (one the
+/// ingester couldn't resolve) is kept: the edit form couldn't show it, so the
+/// user didn't remove it.
+async fn retained_media_refs<F, Fut>(
+    existing_refs: &[serde_json::Value],
+    indexed: &[BlobEntry],
+    retained_cids: &[String],
+    mut fetch_blob_cid: F,
+) -> Vec<StrongRef>
+where
+    F: FnMut(String) -> Fut,
+    Fut: std::future::Future<Output = Option<String>>,
+{
+    // Blob CIDs of the photos indexed without their media record's URI.
+    let unnamed: Vec<&str> = indexed
+        .iter()
+        .filter(|photo| photo.media_uri.is_none())
+        .map(|photo| photo.image.ref_.cid())
+        .collect();
+    let mut kept = Vec::with_capacity(existing_refs.len());
+    for value in existing_refs {
+        let strong_ref = match StrongRef::deserialize(value) {
+            Ok(strong_ref) => strong_ref,
+            Err(e) => {
+                warn!(error = %e, "Failed to parse existing strong ref; dropping");
+                continue;
+            }
+        };
+        let uri = strong_ref.uri.as_str();
+        let indexed_cid = indexed
+            .iter()
+            .find(|photo| photo.media_uri.as_deref() == Some(uri))
+            .map(|photo| photo.image.ref_.cid().to_string());
+        let blob_cid = match indexed_cid {
+            Some(cid) => Some(cid),
+            None if unnamed.is_empty() => None,
+            None => fetch_blob_cid(uri.to_string())
+                .await
+                .filter(|cid| unnamed.contains(&cid.as_str())),
+        };
+        match blob_cid {
+            Some(cid) => {
+                if retained_cids.contains(&cid) {
+                    kept.push(strong_ref);
+                }
+            }
+            None => {
+                warn!(uri, "Keeping a media ref whose photo couldn't be found");
+                kept.push(strong_ref);
+            }
+        }
+    }
+    kept
+}
+
+/// Fetch the `bio.lexicons.temp.v0-1.media` record at `uri` and return its
+/// blob CID, or `None` if it can't be fetched or holds no image.
+async fn fetch_media_blob_cid(agent: &AgentType, uri: String) -> Option<String> {
+    let at_uri = AtUri::from_str(&uri).ok()?;
+    let did = atrium_api::types::string::Did::new(at_uri.authority().as_str().to_string()).ok()?;
+    match auth::get_at_record(agent, did, &at_uri).await {
+        Ok((record, _)) => media_record_blob_cid(&record),
+        Err(e) => {
+            warn!(uri, error = ?e, "Failed to fetch media record");
+            None
+        }
+    }
+}
+
+/// The blob CID of a `bio.lexicons.temp.v0-1.media` record's `image`.
+fn media_record_blob_cid(record: &serde_json::Value) -> Option<String> {
+    let blob_ref = DbBlobRef::deserialize(record.get("image")?.get("ref")?).ok()?;
+    Some(blob_ref.cid().to_string())
+}
+
 /// Record keys the edit form owns. An edit replaces these wholesale (removing
 /// any the form left empty); every other key on the existing record, such as
 /// Darwin Core terms the form doesn't expose or fields another app wrote, is
@@ -1065,18 +1132,25 @@ const EDIT_FORM_FIELDS: &[&str] = &[
 /// Apply an edit to the existing PDS record: the `edited` record (built from
 /// the form by `build_occurrence_record_json`) overwrites the form-owned
 /// fields, and everything else on `existing` is kept, including its original
-/// `createdAt`.
+/// `createdAt`. An `externalRecords` entry the edit keeps also keeps any keys
+/// on it beyond the ones the form owns.
 fn merge_edit_into_existing(
     existing: serde_json::Value,
     edited: serde_json::Value,
 ) -> serde_json::Value {
-    let serde_json::Value::Object(edited) = edited else {
+    let serde_json::Value::Object(mut edited) = edited else {
         return edited;
     };
     let mut merged = match existing {
         serde_json::Value::Object(existing) => existing,
         _ => serde_json::Map::new(),
     };
+    if let (Some(existing), Some(edited)) = (
+        merged.get("externalRecords"),
+        edited.get_mut("externalRecords"),
+    ) {
+        keep_unmodeled_external_record_keys(existing, edited);
+    }
     let remark_fields = RemarkTerm::ALL.map(RemarkTerm::occurrence_field);
     for key in EDIT_FORM_FIELDS.iter().chain(remark_fields.iter()) {
         merged.remove(*key);
@@ -1088,6 +1162,36 @@ fn merge_edit_into_existing(
         merged.insert(key, value);
     }
     serde_json::Value::Object(merged)
+}
+
+/// Copy onto each edited `externalRecords` entry the keys its existing
+/// counterpart (the entry with the same `uri`) has beyond the form's `uri` and
+/// `service`, such as ones another app added.
+fn keep_unmodeled_external_record_keys(
+    existing: &serde_json::Value,
+    edited: &mut serde_json::Value,
+) {
+    const FORM_OWNED: [&str; 2] = ["uri", "service"];
+    let (Some(existing), Some(edited)) = (existing.as_array(), edited.as_array_mut()) else {
+        return;
+    };
+    for entry in edited
+        .iter_mut()
+        .filter_map(serde_json::Value::as_object_mut)
+    {
+        let Some(previous) = existing
+            .iter()
+            .filter_map(serde_json::Value::as_object)
+            .find(|previous| previous.get("uri") == entry.get("uri"))
+        else {
+            continue;
+        };
+        for (key, value) in previous {
+            if !FORM_OWNED.contains(&key.as_str()) && !entry.contains_key(key) {
+                entry.insert(key.clone(), value.clone());
+            }
+        }
+    }
 }
 
 /// Remove the record's accepted identification: `acceptedIdentificationID`
@@ -1554,6 +1658,38 @@ mod tests {
         }
     }
 
+    /// An `externalRecords` entry the edit keeps keeps the keys another app
+    /// added to it. The lexicon's own `service` follows the form, so clearing
+    /// it sticks, and an entry the form removed is gone with its keys.
+    #[test]
+    fn an_edit_keeps_unmodeled_keys_on_the_external_records_it_keeps() {
+        let existing = json!({
+            "externalRecords": [
+                {
+                    "uri": "https://example.org/1",
+                    "service": "bugguide",
+                    "com.example.note": "keep",
+                },
+                { "uri": "https://example.org/2", "com.example.note": "gone" },
+            ],
+        });
+        let mut edited = edited_record();
+        edited["externalRecords"] = json!([
+            { "uri": "https://example.org/1" },
+            { "uri": "https://example.org/3", "service": "inaturalist" },
+        ]);
+
+        let merged = merge_edit_into_existing(existing, edited);
+
+        assert_eq!(
+            merged["externalRecords"],
+            json!([
+                { "uri": "https://example.org/1", "com.example.note": "keep" },
+                { "uri": "https://example.org/3", "service": "inaturalist" },
+            ])
+        );
+    }
+
     /// A new identification supersedes the accepted one, so the pair that
     /// names it goes; nothing else does.
     #[test]
@@ -1654,6 +1790,142 @@ mod tests {
 
         assert_eq!(refs.len(), 1);
         assert_eq!(refs[0]["cid"], "old");
+    }
+
+    const MEDIA_A: &str = "at://did:plc:alice/bio.lexicons.temp.v0-1.media/a";
+    const MEDIA_B: &str = "at://did:plc:alice/bio.lexicons.temp.v0-1.media/b";
+    const MEDIA_C: &str = "at://did:plc:alice/bio.lexicons.temp.v0-1.media/c";
+    const RECORD_CID: &str = "bafyreie5737gdxlw5i64vzichcalba3z2v5n6icifvx5xytvske7mr3hpm";
+
+    fn media_ref(uri: &str) -> serde_json::Value {
+        json!({ "uri": uri, "cid": RECORD_CID })
+    }
+
+    fn indexed_photo(blob_cid: &str, media_uri: Option<&str>) -> BlobEntry {
+        BlobEntry {
+            image: BlobImage {
+                ref_: DbBlobRef::Link {
+                    link: blob_cid.to_string(),
+                },
+                mime_type: "image/jpeg".to_string(),
+            },
+            alt: None,
+            license: None,
+            media_uri: media_uri.map(str::to_string),
+        }
+    }
+
+    fn kept_uris(refs: &[StrongRef]) -> Vec<&str> {
+        refs.iter().map(|r| r.uri.as_str()).collect()
+    }
+
+    /// A fetcher for tests that expect no media record to be fetched.
+    async fn no_fetch(uri: String) -> Option<String> {
+        panic!("unexpected fetch of {uri}");
+    }
+
+    /// The issue's example: one of three refs never resolved, so the row
+    /// holds two photos. Keeping both must not cost the record any ref.
+    #[tokio::test]
+    async fn an_edit_keeps_a_ref_that_never_resolved() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B), media_ref(MEDIA_C)];
+        let indexed = [
+            indexed_photo("blob-a", Some(MEDIA_A)),
+            indexed_photo("blob-c", Some(MEDIA_C)),
+        ];
+        let retained = ["blob-a".to_string(), "blob-c".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, |_| async { None }).await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_A, MEDIA_B, MEDIA_C]);
+    }
+
+    #[tokio::test]
+    async fn an_edit_drops_a_photo_left_out_of_the_retained_list() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B)];
+        let indexed = [
+            indexed_photo("blob-a", Some(MEDIA_A)),
+            indexed_photo("blob-b", Some(MEDIA_B)),
+        ];
+        let retained = ["blob-b".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, no_fetch).await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_B]);
+    }
+
+    /// Matching is by URI, not position: a photo indexed out of the record's
+    /// order, or a stale one no ref names, doesn't shift which ref is kept.
+    #[tokio::test]
+    async fn an_edit_matches_photos_to_refs_by_uri() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B)];
+        let indexed = [
+            indexed_photo("blob-stale", Some(MEDIA_C)),
+            indexed_photo("blob-b", Some(MEDIA_B)),
+            indexed_photo("blob-a", Some(MEDIA_A)),
+        ];
+        let retained = ["blob-a".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, no_fetch).await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_A]);
+    }
+
+    /// Rows indexed before photos carried their media URI are matched by
+    /// fetching each media record for its blob CID.
+    #[tokio::test]
+    async fn an_edit_fetches_the_blob_cid_of_a_ref_with_no_indexed_uri() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B)];
+        let indexed = [indexed_photo("blob-a", None), indexed_photo("blob-b", None)];
+        let retained = ["blob-b".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, |uri| async move {
+            match uri.as_str() {
+                MEDIA_A => Some("blob-a".to_string()),
+                MEDIA_B => Some("blob-b".to_string()),
+                _ => None,
+            }
+        })
+        .await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_B]);
+    }
+
+    /// A ref the ingester couldn't resolve has no photo in the row, so the
+    /// form didn't show it. Its media record being fetchable now doesn't make
+    /// leaving it out of the retained list a removal.
+    #[tokio::test]
+    async fn an_edit_keeps_a_ref_that_never_resolved_even_if_it_can_be_fetched_now() {
+        let refs = [media_ref(MEDIA_A), media_ref(MEDIA_B)];
+        let indexed = [indexed_photo("blob-a", Some(MEDIA_A))];
+        let retained = ["blob-a".to_string()];
+
+        let kept = retained_media_refs(&refs, &indexed, &retained, |_| async {
+            Some("blob-b".to_string())
+        })
+        .await;
+
+        assert_eq!(kept_uris(&kept), [MEDIA_A, MEDIA_B]);
+    }
+
+    /// The media record's blob CID, read from its `image` blob ref.
+    #[test]
+    fn reads_the_blob_cid_of_a_media_record() {
+        let record = json!({
+            "$type": "bio.lexicons.temp.v0-1.media",
+            "image": {
+                "$type": "blob",
+                "ref": { "$link": "bafkreiblob" },
+                "mimeType": "image/jpeg",
+                "size": 1,
+            },
+        });
+
+        assert_eq!(
+            media_record_blob_cid(&record).as_deref(),
+            Some("bafkreiblob")
+        );
+        assert_eq!(media_record_blob_cid(&json!({ "alt": "no image" })), None);
     }
 
     /// Scheme matching is case-insensitive, as URI schemes are.

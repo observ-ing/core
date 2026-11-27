@@ -21,11 +21,16 @@ import { useProfileFeed } from "../../lib/query/hooks";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
-import { shouldItalicizeTaxonName } from "../common/TaxonLink";
-import { ObservationGridCard, observationGridCardContentSx } from "../common/ObservationGridCard";
+import { taxonNameFontStyle } from "../common/TaxonLink";
+import {
+  ObservationGridCard,
+  observationGridCardContentSx,
+  observationGridCardTimeSx,
+  observationGridCardTitleSx,
+} from "../common/ObservationGridCard";
 import { ObservationGridCardSkeleton } from "../common/ObservationGridCardSkeleton";
-import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
+import { LoadMoreButton } from "../common/LoadMoreButton";
 import { FullPageStatus } from "../common/FullPageStatus";
 import { fullPageStatusSecondaryActionSx } from "../common/layoutSx";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
@@ -200,24 +205,15 @@ export function ProfileView() {
                   <Typography
                     variant="body2"
                     sx={{
-                      fontStyle: shouldItalicizeTaxonName(id.scientific_name, id.taxon_rank)
-                        ? "italic"
-                        : "normal",
-                      color: "primary.main",
-                      fontWeight: 500,
+                      fontStyle: taxonNameFontStyle(id.scientific_name, id.taxon_rank),
+                      ...observationGridCardTitleSx,
                     }}
                   >
                     {id.scientific_name}
                   </Typography>
                 </Box>
                 <CardContent sx={observationGridCardContentSx}>
-                  <Typography
-                    variant="caption"
-                    noWrap
-                    sx={{
-                      color: "text.disabled",
-                    }}
-                  >
+                  <Typography variant="caption" noWrap sx={observationGridCardTimeSx}>
                     <RelativeTime date={new Date(id.date_identified)} />
                   </Typography>
                 </CardContent>
@@ -234,16 +230,11 @@ export function ProfileView() {
           )}
         </Box>
       )}
-      {isFetchingNextPage && <CenteredSpinner color="primary" />}
       {!isLoading && occurrences.length === 0 && identifications.length === 0 && (
         <EmptyState message="No activity yet" />
       )}
-      {hasMore && !isLoading && !isFetchingNextPage && (
-        <Box sx={{ p: 2, textAlign: "center" }}>
-          <Button variant="outlined" onClick={() => void fetchNextPage()}>
-            Load more
-          </Button>
-        </Box>
+      {hasMore && !isLoading && (
+        <LoadMoreButton loading={isFetchingNextPage} onClick={() => void fetchNextPage()} />
       )}
     </Container>
   );

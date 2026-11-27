@@ -40,14 +40,19 @@ jobs:
       - name: Regenerate transparency.json
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        run: node scripts/update-transparency.mjs > "$RUNNER_TEMP/pr-body.md"
+        run: |
+          node scripts/update-transparency.mjs > "$RUNNER_TEMP/pr-body.md"
+          # The Exact app reads its own copy (exact/sync.ts; CI checks they match).
+          cp frontend/src/data/transparency.json exact/data/transparency.json
 
       # add-paths matters: the auth step drops a gha-creds-*.json key file into
       # the workspace, which must never be committed.
       - uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.TRANSPARENCY_PR_TOKEN }}
-          add-paths: frontend/src/data/transparency.json
+          add-paths: |
+            frontend/src/data/transparency.json
+            exact/data/transparency.json
           branch: chore/transparency-costs
           delete-branch: true
           commit-message: 'chore(transparency): refresh hosting costs from billing export'

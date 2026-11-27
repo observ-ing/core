@@ -14,6 +14,12 @@ pub struct BlobEntry {
     /// SPDX license identifier mirrored from the media record (e.g. `CC-BY-4.0`).
     #[serde(default)]
     pub license: Option<String>,
+    /// AT URI of the `bio.lexicons.temp.v0-1.media` record this entry was
+    /// resolved from, which is how an edit matches a photo to the occurrence's
+    /// media strong ref. Absent on rows indexed before it was recorded, and
+    /// on legacy inline `blobs`, which have no media record.
+    #[serde(default, rename = "mediaUri", skip_serializing_if = "Option::is_none")]
+    pub media_uri: Option<String>,
 }
 
 /// Image metadata within a blob entry.

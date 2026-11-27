@@ -214,6 +214,40 @@ test "a family's tree opens a genus to show its species, and closes it"
   clock data
   expect tree missing "child-9"
 
+test "the Docs page lists the reference pages and opens the lexicons"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "account-docs"
+  clock settle
+  expect tree has "docs-api"
+  expect tree has "docs-source"
+  tap "docs-lexicons"
+  clock settle
+  expect tree has "lexicon-bio.lexicons.temp.v0-1.occurrence"
+  expect tree has "lexprop-bio.lexicons.temp.v0-1.occurrence-main-eventDate"
+  expect tree has "lexicon-com.atproto.repo.strongRef"
+
+// Only its shape: transparency.yml rewrites the figures every month.
+test "the Transparency page tabulates the hosting costs"
+  at "/transparency"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  clock settle
+  expect tree has "cost-month-0"
+  expect tree has "cost-total-0"
+  expect tree has "cost-grand-total"
+
+test "the Status page says which services are awake"
+  at "/status"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  clock settle
+  expect text "service-observing-appview-state" == "Awake"
+  expect text "service-observing-species-id-state" == "Asleep"
+  expect text "service-tap-ingester-summary" == "1 instance, 1 busy"
+  expect tree missing "service-observing-db-summary"
+
 // Sign-in starts on /account: Exact's web host finds the drive's auth fixture
 // (?authFixture=, added to the launch URL) in the page's current URL, which a
 // tab switch replaces.
@@ -705,6 +739,29 @@ test "the sheet shows a picked photo's preview, date, place and suggestions"
   clock data
   expect tree has "suggestion-1"
 
+test "when no species is confident, the sheet leads with the broader rank the model is sure of"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "new-observation"
+  clock settle
+  tap "new-add-photos"
+  pick "new-photos" "fixtures/oak-portrait.jpg"
+  clock data
+  expect text "suggestion-name-0" == "Oaks · Quercus"
+  expect text "suggestion-score-0" == "Genus · 72% likely"
+  expect text "suggestion-species-label" == "If you can tell which species:"
+  expect text "suggestion-name-1" == "Coast Live Oak · Quercus agrifolia"
+  expect text "suggestion-score-1" == "31%"
+  tap "suggestion-0"
+  expect text "new-taxon" == "Oaks · Quercus"
+
 // Phase 5: batch upload, the upload queue, Live ID.
 test "a batch uploads one observation per placed photo"
   at "/account"
@@ -735,6 +792,25 @@ test "a batch uploads one observation per placed photo"
   clock settle
   expect text "sent-note" == "1 observation uploaded."
   expect tree missing "pending"
+
+test "a batch photo no species is confident about offers the broader rank"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-batch"
+  clock settle
+  tap "batch-add"
+  pick "batch-photos" "fixtures/oak-portrait.jpg"
+  clock data
+  expect text "batch-use-0" == "Use Oaks · Quercus (genus, 72% likely)"
+  tap "batch-use-0"
+  expect text "batch-title-0" == "Oaks · Quercus"
 
 test "offline, a batch waits in the queue, survives a relaunch and uploads later"
   at "/account"

@@ -57,7 +57,14 @@ export function taxonFromSuggestion(s: SpeciesSuggestion): Partial<BatchTaxon> {
 
 /** The identification for a higher rank offered in place of an uncertain species. */
 export function taxonFromAncestor(ancestor: AncestorSelection): Partial<BatchTaxon> {
-  return { name: ancestor.name, match: null, kingdom: ancestor.kingdom ?? "", rank: ancestor.rank };
+  return ancestor.match
+    ? {
+        name: ancestor.name,
+        match: ancestor.match,
+        kingdom: ancestor.match.kingdom ?? "",
+        rank: "",
+      }
+    : { name: ancestor.name, match: null, kingdom: ancestor.kingdom ?? "", rank: ancestor.rank };
 }
 
 const MIXED = "Mixed values";

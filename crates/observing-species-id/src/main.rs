@@ -6,6 +6,7 @@ mod embeddings;
 mod error;
 mod model;
 mod preprocessing;
+mod rollup;
 mod server;
 mod types;
 

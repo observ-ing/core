@@ -102,6 +102,17 @@ function edited(d: Detail, r: UpdateBody): Detail {
     ...(r.scientificName ? { effectiveTaxonomy: { scientificName: r.scientificName, rank: r.taxonRank, kingdom: r.kingdom } } : {}) } };
 }
 const isJpeg = (base64: string) => { try { const b = Buffer.from(base64, 'base64'); return b[0] === 0xff && b[1] === 0xd8; } catch { return false; } };
+// Whether a JPEG is taller than it is wide, read from its frame header.
+function isPortrait(base64: string) {
+  const b = Buffer.from(base64, 'base64');
+  for (let i = 2; i + 9 < b.length && b[i] === 0xff; i += 2 + b.readUInt16BE(i + 2)) {
+    const marker = b[i + 1];
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return b.readUInt16BE(i + 5) > b.readUInt16BE(i + 7);
+    }
+  }
+  return false;
+}
 // A made observation, answered the way the appview answers a recorded one.
 function createdDetail(uri: string, r: CreateBody) {
   return {
@@ -261,11 +272,21 @@ const fixtures: Record<string, (req: Request & { params: Record<string, string> 
   '/api/user/upload-limit': (req) => signedIn(req)
     ? Response.json({ maxImageBytes: 1_000_000, limitedByPds: false }, { headers: CORS })
     : unauthorized(),
-  // The model's answer, the same for any photo.
+  // The model's answer: a confident newt for any landscape photo; for a
+  // portrait one (fixtures/oak-portrait.jpg), no confident species but the
+  // genus Quercus, as the appview sends when the model can't tell oaks apart.
   '/api/species-id': async (req) => {
     if (!signedIn(req)) return unauthorized();
     const { image } = (await req.json()) as { image?: string };
     if (!image || !isJpeg(image)) return Response.json({ error: 'image must be a base64 JPEG' }, { status: 400, headers: CORS });
+    if (isPortrait(image)) return Response.json({ modelVersion: 'fixture', inferenceTimeMs: 1, suggestions: [
+      { scientificName: 'Quercus agrifolia', commonName: 'Coast Live Oak', confidence: 0.31, kingdom: 'Plantae', inRange: true },
+      { scientificName: 'Quercus lobata', commonName: 'Valley Oak', confidence: 0.28, kingdom: 'Plantae', inRange: true },
+    ], fallback: {
+      rank: 'genus', scientificName: 'Quercus', confidence: 0.72, commonName: 'Oaks',
+      kingdom: 'Plantae', phylum: 'Tracheophyta', class: 'Magnoliopsida', order: 'Fagales', family: 'Fagaceae',
+      taxonMatch: { id: 'Plantae/Quercus', scientificName: 'Quercus', commonName: 'Oaks', rank: 'genus', kingdom: 'Plantae', source: 'gbif' },
+    } }, { headers: CORS });
     return Response.json({ modelVersion: 'fixture', inferenceTimeMs: 1, suggestions: [
       { scientificName: 'Notophthalmus viridescens', commonName: 'Eastern Newt', confidence: 0.91, kingdom: 'Animalia', inRange: false,
         taxonMatch: { id: 'Animalia/Notophthalmus viridescens', scientificName: 'Notophthalmus viridescens', commonName: 'Eastern Newt',

@@ -20,7 +20,6 @@ import {
   alpha,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   LinearProgress,
   Link as MuiLink,
@@ -76,9 +75,11 @@ import { BatchCard, KEEPS_SELECTION, type CardDropState } from "./BatchCard";
 import { useMarqueeSelection } from "./useMarqueeSelection";
 import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
+import { ConvertingStatus } from "./ConvertingStatus";
+import { StatusLine } from "./StatusLine";
 import { PhoneBatch } from "./phone/PhoneBatch";
 import { PhoneLocationStep } from "./phone/PhoneLocationStep";
-import { pageTitleSx, panelTitleSx, touchTarget } from "../common/layoutSx";
+import { dropZoneFrameSx, pageTitleSx, panelTitleSx, touchTarget } from "../common/layoutSx";
 
 /** Observations sent at once. Each request carries its photos, so keep it low. */
 const UPLOAD_CONCURRENCY = 3;
@@ -665,19 +666,13 @@ export function BatchUploadPage() {
     />
   );
   const dropZoneSx = {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
+    ...dropZoneFrameSx,
     justifyContent: "center",
     gap: 1,
     p: 2.5,
-    borderRadius: 2,
-    border: 2,
-    borderStyle: "dashed",
     borderColor: overNew ? "primary.main" : "divider",
     bgcolor: overNew ? "action.hover" : "transparent",
     color: "text.secondary",
-    textAlign: "center",
   } as const;
 
   const dialogs = (
@@ -811,28 +806,15 @@ export function BatchUploadPage() {
                   ? `${uploadedCount} of ${total} uploaded`
                   : `${plural(observations.length, "observation")}, ${plural(photoCount, "photo")}`}
               </Typography>
-              {converting > 0 && (
-                <Typography
-                  role="status"
-                  sx={{ display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}
-                >
-                  <CircularProgress size={16} color="inherit" />
-                  Converting {plural(converting, "HEIC photo")}…
-                </Typography>
-              )}
+              <ConvertingStatus count={converting} />
               {failedCount > 0 && (
-                <Typography
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.75,
-                    color: "error.main",
-                    fontWeight: 600,
-                  }}
+                <StatusLine
+                  variant="body1"
+                  icon={<ErrorIcon fontSize="small" />}
+                  color="error.main"
                 >
-                  <ErrorIcon fontSize="small" />
                   {failedCount} failed
-                </Typography>
+                </StatusLine>
               )}
               {incomplete.length > 0 && !filtering && (
                 <Button
