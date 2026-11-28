@@ -51,6 +51,9 @@ export const dropZoneFrameSx = {
 /** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
 export const pillButtonSx = { borderRadius: 2 } as const;
 
+/** The header's bold primary call-to-action buttons ("Log in", "Add observation"). Pair with `variant="contained"` and `disableElevation`. */
+export const headerCtaSx = { ...pillButtonSx, fontWeight: 700, whiteSpace: "nowrap" } as const;
+
 /** Dark pill used for count badges overlaid on photos (batch card, phone grid/editor). Callers add position and padding. */
 export const overlayBadgeSx = {
   borderRadius: 4,
