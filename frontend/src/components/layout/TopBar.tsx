@@ -27,7 +27,7 @@ import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
 import { CreateMenu } from "./CreateMenu";
 import { PendingIndicator } from "./PendingIndicator";
-import { glassBlurSx, headerMenuPaperSx, pillButtonSx } from "../common/layoutSx";
+import { glassBlurSx, headerCtaSx, headerMenuPaperSx, pillButtonSx } from "../common/layoutSx";
 
 interface TopBarProps {
   onMobileMenuClick: () => void;
@@ -244,15 +244,10 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
             ) : (
               <Button
                 variant="contained"
+                disableElevation
                 onClick={handleLogin}
                 startIcon={<Login />}
-                sx={{
-                  ...pillButtonSx,
-                  px: 3,
-                  fontWeight: 700,
-                  boxShadow: "none",
-                  "&:hover": { boxShadow: "none" },
-                }}
+                sx={{ ...headerCtaSx, px: 3 }}
               >
                 Log in
               </Button>
